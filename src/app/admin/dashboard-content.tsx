@@ -15,7 +15,7 @@ interface Feed {
 interface DashboardData {
   overview: { users: number; authors: number; articles: number; published: number; pendingApplications: number; totalViews: number; sourcedViews: number; totalEarnings: number; totalPayouts: number; newUsers30d: number; sourcedArticles: number; inHouseArticles: number };
   topArticles: { title: string; slug: string; viewCount: number; sourceName?: string | null; sourceUrl?: string | null; author: { firstName: string; lastName: string } }[];
-  securityEvents: { eventType: string; createdAt: string; user?: { username: string } | null }[];
+  securityEvents: { eventType: string; createdAt: string; metadata?: Record<string, unknown> | null; user?: { username: string } | null }[];
 }
 
 interface ActivityEvent {
@@ -172,15 +172,25 @@ export default function AdminDashboardContent() {
                 <Link href="/admin/authors" style={{ fontSize: '0.75rem', color: 'var(--primary)', textDecoration: 'none' }}>Review</Link>
               </div>
             )}
-            {data.securityEvents.slice(0, 5).map((ev, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--bg-base)', fontSize: '0.8rem' }}>
-                <span style={{ fontWeight: 600 }}>{ev.eventType}</span>
-                <span style={{ color: 'var(--text-secondary)', flex: 1 }}>
-                  {ev.user ? `by @${ev.user.username}` : ''}
-                </span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>{formatRelativeDate(ev.createdAt)}</span>
-              </div>
-            ))}
+            {(data.securityEvents || []).slice(0, 5).map((ev, i) => {
+              const meta = ev.metadata as { name?: string; username?: string; severity?: string } | null;
+              const label = ev.eventType === 'user_registered'
+                ? `New user registered: ${meta?.name || ''}`
+                : ev.eventType;
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8,
+                  background: 'var(--bg-base)', fontSize: '0.8rem',
+                  borderLeft: ev.eventType === 'user_registered' ? '3px solid var(--success)' : '3px solid var(--primary)',
+                }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.78rem' }}>{label}</span>
+                  <span style={{ color: 'var(--text-secondary)', flex: 1, fontSize: '0.75rem' }}>
+                    {ev.eventType !== 'user_registered' && ev.user ? `by @${ev.user.username}` : ''}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)' }}>{formatRelativeDate(ev.createdAt)}</span>
+                </div>
+              );
+            })}
             {pendingApps.length === 0 && data.securityEvents.length === 0 && (
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', textAlign: 'center', padding: 16 }}>No recent activity.</p>
             )}

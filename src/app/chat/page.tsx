@@ -341,6 +341,12 @@ function ChatPage() {
     >
       <nav style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)', padding: '0 24px', flexShrink: 0 }}>
         <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', height: 56, gap: 16 }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.82rem', fontWeight: 500, padding: '4px 10px', borderRadius: 8, background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-inset)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-elevated)'; }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </Link>
           <Link href="/" style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', textDecoration: 'none' }}>
             <span style={{ color: 'var(--primary)' }}>026</span>Newsblog
           </Link>

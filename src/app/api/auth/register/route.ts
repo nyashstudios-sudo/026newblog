@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { registerSchema, registerUser, AuthError } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 import { ZodError } from 'zod';
 
 export async function POST(req: Request) {
@@ -7,6 +8,17 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = registerSchema.parse(body);
     const user = await registerUser(data);
+
+    // Track new user registration for admin dashboard activity feed
+    const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+    if (ctx) {
+      const sb = ctx.supabaseAdmin as any;
+      await sb.from('security_events').insert({
+        event_type: 'user_registered',
+        metadata: { name: `${data.firstName} ${data.lastName}`, severity: 'info' },
+        user_id: user.id,
+      }).maybeSingle();
+    }
 
     return NextResponse.json(
       {
