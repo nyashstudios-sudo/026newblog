@@ -19,8 +19,6 @@ const newsreader = Newsreader({
   subsets: ['latin'],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://026newsblog.vercel.app';
-
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -30,8 +28,16 @@ export const viewport: Viewport = {
   ],
 };
 
+const siteUrl = 'https://026newsblog.vercel.app';
+let metadataBase: URL | undefined;
+try {
+  metadataBase = new URL(process.env.NEXT_PUBLIC_SITE_URL || siteUrl);
+} catch {
+  metadataBase = new URL(siteUrl);
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase,
   title: {
     default: '026Newsblog — Breaking News & Stories',
     template: '%s | 026Newsblog',
