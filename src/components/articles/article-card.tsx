@@ -19,17 +19,18 @@ export interface ArticleCardData {
   sourceName?: string | null;
   sourceUrl?: string | null;
   category?: { name: string; slug: string } | null;
-  author: {
+  author?: {
     id: string;
     firstName: string;
     lastName: string;
     username: string;
     avatarUrl?: string | null;
-  };
+  } | null;
 }
 
 export function ArticleCard({ article, index = 0 }: { article: ArticleCardData; index?: number }) {
-  const initials = `${article.author.firstName[0]}${article.author.lastName[0]}`;
+  const authorName = article.author ? `${article.author.firstName} ${article.author.lastName}`.trim() : 'Unknown';
+  const initials = article.author ? `${article.author.firstName?.[0] || ''}${article.author.lastName?.[0] || ''}` : '?';
 
   return (
     <Link
@@ -58,11 +59,11 @@ export function ArticleCard({ article, index = 0 }: { article: ArticleCardData; 
         </div>
         <div className="article-card-footer">
           <div className="article-card-author">
-            <div className="article-card-author-avatar" style={{ background: `oklch(55% 0.14 ${(article.author.firstName.charCodeAt(0) * 7) % 360})` }}>
+            <div className="article-card-author-avatar" style={{ background: `oklch(55% 0.14 ${(article.author?.firstName?.charCodeAt(0) || 0) * 7 % 360})` }}>
               {initials}
             </div>
             <div>
-              <div className="article-card-author-name">{article.author.firstName} {article.author.lastName}</div>
+              <div className="article-card-author-name">{authorName}</div>
               <span className="article-card-date">
                 {article.publishedAt ? formatRelativeDate(article.publishedAt) : ''}
                 {article.readingTimeMinutes ? ` · ${article.readingTimeMinutes} min read` : ''}

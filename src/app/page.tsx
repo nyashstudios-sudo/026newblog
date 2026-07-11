@@ -6,9 +6,38 @@ import { RssFeedWidget } from '@/components/rss/rss-feed-widget';
 
 interface ArticleData {
   id: string; title: string; slug: string; likeCount?: number; viewCount?: number;
-  coverImage?: string | null; excerpt?: string; category?: { name: string; slug: string } | null;
-  author?: { firstName: string; lastName: string; username: string } | null;
-  sourceName?: string | null; sourceUrl?: string | null; createdAt: string;
+  coverImageUrl?: string | null; excerpt?: string;
+  category?: { name: string; slug: string } | null;
+  author?: { id: string; firstName: string; lastName: string; username: string; avatarUrl?: string | null } | null;
+  readingTimeMinutes?: number; commentCount?: number; shareCount?: number;
+  sourceName?: string | null; sourceUrl?: string | null; publishedAt?: string;
+}
+
+function mapArticle(a: any): ArticleData {
+  if (!a) return null as any;
+  return {
+    id: a.id,
+    title: a.title,
+    slug: a.slug,
+    excerpt: a.excerpt,
+    coverImageUrl: a.cover_image_url,
+    readingTimeMinutes: a.reading_time_minutes,
+    viewCount: a.view_count,
+    likeCount: a.like_count,
+    commentCount: a.comment_count,
+    shareCount: a.share_count,
+    publishedAt: a.published_at,
+    sourceName: a.source_name,
+    sourceUrl: a.source_url,
+    category: a.category ? { name: a.category.name, slug: a.category.slug } : null,
+    author: a.author ? {
+      id: a.author.id,
+      firstName: a.author.first_name,
+      lastName: a.author.last_name,
+      username: a.author.username,
+      avatarUrl: a.author.avatar_url,
+    } : null,
+  };
 }
 
 async function getData() {
@@ -20,7 +49,11 @@ async function getData() {
     ]);
     const feed = feedRes.ok ? await feedRes.json() : { articles: [], hasMore: false };
     const cats = catRes.ok ? await catRes.json() : { categories: [] };
-    return { articles: feed.articles || [], hasMore: feed.hasMore, categories: cats.categories || [] };
+    return {
+      articles: (feed.articles || []).map(mapArticle),
+      hasMore: feed.hasMore,
+      categories: cats.categories || [],
+    };
   } catch {
     return { articles: [], hasMore: false, categories: [] };
   }

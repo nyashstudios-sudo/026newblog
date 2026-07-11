@@ -138,7 +138,7 @@ export default function ExploreContent() {
                 <div className="explore-featured-content">
                   {articles[0].category && <span className="explore-featured-cat">{articles[0].category.name}</span>}
                   <h3 className="explore-featured-title">{articles[0].title}</h3>
-                  <span className="explore-featured-meta">{articles[0].author.firstName} {articles[0].author.lastName} · {articles[0].readingTimeMinutes || '?'} min read · {articles[0].likeCount} likes</span>
+                  <span className="explore-featured-meta">{articles[0].author?.firstName || 'Unknown'} {articles[0].author?.lastName || ''} · {articles[0].readingTimeMinutes || '?'} min read · {articles[0].likeCount} likes</span>
                 </div>
               </Link>
               <div className="explore-side-stack">
@@ -148,7 +148,7 @@ export default function ExploreContent() {
                     <div className="explore-side-card-body">
                       {a.category && <span className="explore-side-card-cat">{a.category.name}</span>}
                       <h4 className="explore-side-card-title">{a.title}</h4>
-                      <span className="explore-side-card-meta">{a.author.firstName} {a.author.lastName} · {a.readingTimeMinutes || '?'} min</span>
+                      <span className="explore-side-card-meta">{a.author?.firstName || 'Unknown'} {a.author?.lastName || ''} · {a.readingTimeMinutes || '?'} min</span>
                     </div>
                   </Link>
                 ))}
