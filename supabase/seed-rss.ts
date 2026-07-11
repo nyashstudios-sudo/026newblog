@@ -114,7 +114,7 @@ async function main() {
         name: feed.name, 
         url: feed.url, 
         category_id: catId, 
-        refresh_minutes: feed.refreshMinutes, 
+        refresh_interval_minutes: feed.refreshMinutes, 
         status: 'active' 
       }, { onConflict: 'url' })
       .select('id');
