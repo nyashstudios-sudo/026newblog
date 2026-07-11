@@ -28,7 +28,7 @@ export default function AdminSecurityPage() {
   const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/analytics')
+    fetch('/api/admin/security')
       .then(r => r.json())
       .then((res) => {
         setData({

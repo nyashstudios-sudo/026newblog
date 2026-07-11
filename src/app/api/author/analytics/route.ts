@@ -9,11 +9,14 @@ export const GET = requireRole(['author', 'admin'], async (_req, user) => {
   const sb = ctx.supabaseAdmin as any;
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: articles }, { data: earnings }] = await Promise.all([
+  const [{ data: articles }, { data: earnings }, { data: followerRow }] = await Promise.all([
     sb.from('articles').select('id, title, slug, status, view_count, like_count, comment_count, share_count, published_at')
       .eq('author_id', user.id).order('view_count', { ascending: false }).limit(10),
     sb.from('earnings').select('amount_usd').eq('author_id', user.id).gte('created_at', thirtyDaysAgo),
+    sb.from('author_profiles').select('total_followers').eq('user_id', user.id).maybeSingle(),
   ]);
+
+  const followers = Number(followerRow?.total_followers || 0);
 
   const totals = (articles || []).reduce(
     (acc: { views: number; likes: number; comments: number; shares: number }, a: any) => ({
@@ -46,6 +49,7 @@ export const GET = requireRole(['author', 'admin'], async (_req, user) => {
 
   return NextResponse.json({
     totals,
+    followers,
     monthlyEarnings,
     topArticles: articles || [],
     dailyViews,
