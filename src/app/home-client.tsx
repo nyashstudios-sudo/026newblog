@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import type { ArticleCardData } from '@/components/articles/article-card';
 
 interface TrendingItem { title: string; slug: string; likeCount?: number; categoryName?: string; }
 interface CategoryItem { name: string; slug: string; }
 
-const HeroSlideshow = lazy(() => import('@/components/articles/hero-slideshow').then(m => ({ default: m.HeroSlideshow })));
-const ArticleCard = lazy(() => import('@/components/articles/article-card').then(m => ({ default: m.ArticleCard })));
-const RssFeedWidget = lazy(() => import('@/components/rss/rss-feed-widget').then(m => ({ default: m.RssFeedWidget })));
-
-import type { ArticleCardData } from '@/components/articles/article-card';
+const HeroSlideshow = dynamic(() => import('@/components/articles/hero-slideshow').then(m => ({ default: m.HeroSlideshow })), { ssr: false });
+const ArticleCard = dynamic(() => import('@/components/articles/article-card').then(m => ({ default: m.ArticleCard })), { ssr: false });
+const RssFeedWidget = dynamic(() => import('@/components/rss/rss-feed-widget').then(m => ({ default: m.RssFeedWidget })), { ssr: false });
 
 function TrendingIcon() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>; }
 function GridIcon() { return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>; }
@@ -62,9 +62,7 @@ export default function HomeClient() {
 
   return (
     <div>
-      <Suspense fallback={<div className="hero"><div className="skeleton w-full h-full rounded-[20px]" /></div>}>
-        <HeroSlideshow />
-      </Suspense>
+      <HeroSlideshow />
 
       <div className="main-layout">
         <main>
@@ -81,9 +79,7 @@ export default function HomeClient() {
 
           <div className="article-feed">
             {articles.map((article, i) => (
-              <Suspense key={article.id} fallback={<div className="article-card" style={{ height: 200 }} />}>
-                <ArticleCard article={article} index={i} />
-              </Suspense>
+              <ArticleCard key={article.id} article={article} index={i} />
             ))}
             {loading && (
               <div className="loading-indicator">
@@ -116,9 +112,7 @@ export default function HomeClient() {
             </div>
           </div>
 
-          <Suspense fallback={null}>
-            <RssFeedWidget />
-          </Suspense>
+          <RssFeedWidget />
 
           <div className="sidebar-section">
             <h3 className="sidebar-title"><GridIcon /> Categories</h3>
