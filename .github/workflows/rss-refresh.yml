@@ -11,5 +11,5 @@ jobs:
     steps:
       - name: Call RSS refresh API
         run: |
-          curl -X GET "https://YOUR_DOMAIN.vercel.app/api/rss/refresh" \
+          curl -X GET "https://026newsblog.vercel.app/api/rss/refresh" \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}"

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { HeroSlideshow } from '@/components/articles/hero-slideshow';
 import { ArticleCard, type ArticleCardData } from '@/components/articles/article-card';
 import { TrendingUp, Grid, Mail } from 'lucide-react';
+import { RssFeedWidget } from '@/components/rss/rss-feed-widget';
 
 interface TrendingItem {
   title: string;
@@ -143,6 +144,8 @@ export default function HomePage() {
               ))}
             </div>
           </div>
+
+          <RssFeedWidget />
 
           <div className="sidebar-section">
             <h3 className="sidebar-title">
