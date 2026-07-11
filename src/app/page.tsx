@@ -1,65 +1,191 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { HeroSlideshow } from '@/components/articles/hero-slideshow';
+import { ArticleCard, type ArticleCardData } from '@/components/articles/article-card';
+import { TrendingUp, Grid, Mail } from 'lucide-react';
+
+interface TrendingItem {
+  title: string;
+  slug: string;
+  likeCount?: number;
+  categoryName?: string;
+}
+
+interface CategoryItem {
+  name: string;
+  slug: string;
+}
+
+export default function HomePage() {
+  const [tab, setTab] = useState('recent');
+  const [articles, setArticles] = useState<ArticleCardData[]>([]);
+  const [trending, setTrending] = useState<TrendingItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadArticles = async (pageNum: number, tabName: string, reset = false) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/articles/feed?page=${pageNum}&tab=${tabName}&limit=12`);
+      const data = await res.json();
+      setArticles((prev) => reset ? (data.articles || []) : [...prev, ...(data.articles || [])]);
+      setHasMore(data.hasMore);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setPage(1);
+    setArticles([]);
+    loadArticles(1, tab, true);
+  }, [tab]);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then((r) => r.json())
+      .then((d) => setCategories(d.categories || []))
+      .catch(() => {});
+    fetch('/api/articles/feed?page=1&tab=popular&limit=5')
+      .then((r) => r.json())
+      .then((d) => {
+        const items: TrendingItem[] = (d.articles || []).map((a: ArticleCardData) => ({
+          title: a.title,
+          slug: a.slug,
+          likeCount: a.likeCount,
+          categoryName: a.category?.name,
+        }));
+        setTrending(items);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!hasMore || loading || page === 1) return;
+    loadArticles(page, tab);
+  }, [page]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loading || !hasMore) return;
+      const scrollBottom = window.innerHeight + window.scrollY;
+      const docHeight = document.documentElement.scrollHeight;
+      if (scrollBottom >= docHeight - 400) {
+        setPage((p) => p + 1);
+      }
+      const scrollTopBtn = document.getElementById('scrollTopBtn');
+      if (scrollTopBtn) {
+        scrollTopBtn.classList.toggle('visible', window.scrollY > 600);
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loading, hasMore]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div>
+      <HeroSlideshow />
+
+      <div className="main-layout">
+        <main>
+          <div className="feed-header">
+            <h2 className="feed-title">Latest Stories</h2>
+            <div className="feed-tabs">
+              {['foryou', 'recent', 'popular'].map((t) => (
+                <button key={t} className={`feed-tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
+                  {t === 'foryou' ? 'For You' : t === 'recent' ? 'Recent' : 'Popular'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="article-feed">
+            {articles.map((article, i) => (
+              <ArticleCard key={article.id} article={article} index={i} />
+            ))}
+            {loading && (
+              <div className="loading-indicator">
+                <div className="loading-spinner" />
+                <span>Loading more stories...</span>
+              </div>
+            )}
+            {!hasMore && articles.length === 0 && !loading && (
+              <p className="text-center text-[var(--text-secondary)] py-12">No articles yet. Check back soon!</p>
+            )}
+          </div>
+
+          {hasMore && <div className="h-10" />}
+        </main>
+
+        <aside className="sidebar">
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">
+              <TrendingUp />
+              Trending Now
+            </h3>
+            <div className="trending-list">
+              {trending.map((item, i) => (
+                <Link key={item.slug} href={`/article/${item.slug}`} className="trending-item">
+                  <span className="trending-number">{String(i + 1).padStart(2, '0')}</span>
+                  <div className="trending-content">
+                    <div className="trending-item-title">{item.title}</div>
+                    <div className="trending-item-meta">
+                      {item.categoryName}{item.likeCount ? ` · ${item.likeCount} likes` : ''}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">
+              <Grid />
+              Categories
+            </h3>
+            <div className="categories-grid">
+              {categories.map((cat) => (
+                <Link key={cat.slug} href={`/?category=${cat.slug}`} className="category-tag">
+                  {cat.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="sidebar-section newsletter-section">
+            <h3 className="sidebar-title">
+              <Mail />
+              Daily Digest
+            </h3>
+            <p className="newsletter-desc">Get the top 5 stories delivered to your inbox every morning. No spam, just signal.</p>
+            <div className="newsletter-input-wrap">
+              <input type="email" className="newsletter-input" placeholder="your@email.com" />
+              <button className="newsletter-btn">Subscribe</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div className="chat-widget">
+        <Link href="/chat" className="chat-btn" aria-label="Open chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span className="chat-badge">3</span>
+        </Link>
+      </div>
+
+      <button className="scroll-top" id="scrollTopBtn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Scroll to top">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="18 15 12 9 6 15" />
+        </svg>
+      </button>
     </div>
   );
 }
