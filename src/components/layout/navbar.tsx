@@ -32,6 +32,15 @@ export function Navbar() {
     ...(user?.role === 'admin' ? [{ href: '/admin', label: 'Admin' }] : []),
   ];
 
+  const primaryLinks = [
+    { href: '/', label: 'Home' },
+    { href: '/technology', label: 'Technology' },
+    { href: '/category/business', label: 'Business' },
+    { href: '/category/culture', label: 'Culture' },
+    { href: '/category/opinion', label: 'Opinion' },
+    { href: '/listen', label: 'Podcasts' },
+  ];
+
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-[var(--nav-bg)] border-b border-[var(--border-subtle)]">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
@@ -40,7 +49,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
-          {links.map((l) => (
+          {primaryLinks.map((l) => (
             <Link
               key={l.href}
               href={l.href}
@@ -69,19 +78,18 @@ export function Navbar() {
             <Search className="w-[18px] h-[18px]" />
           </Link>
           {!isAuthPage && <ThemeToggle />}
-          {user && (
-            <Link
-              href="/notifications"
-              className="relative w-10 h-10 rounded-[10px] border border-[var(--border)] flex items-center justify-center hover:border-[var(--primary)] transition-colors"
-            >
-              <Bell className="w-[18px] h-[18px]" />
-              {unread > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--accent)] text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {unread > 9 ? '9+' : unread}
-                </span>
-              )}
-            </Link>
-          )}
+          <Link
+            href="/notifications"
+            className="relative w-10 h-10 rounded-[10px] border border-[var(--border)] flex items-center justify-center hover:border-[var(--primary)] transition-colors"
+          >
+            <Bell className="w-[18px] h-[18px]" />
+            {user && unread > 0 && (
+              <span className="notification-dot" />
+            )}
+            {!user && (
+              <span className="w-2 h-2 rounded-full bg-[var(--accent)] absolute top-2 right-2" />
+            )}
+          </Link>
           {!loading && (
             user ? (
               <div className="flex items-center gap-1 ml-1">
@@ -107,14 +115,14 @@ export function Navbar() {
                     padding: '7px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
                     background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-secondary)',
                     cursor: 'pointer', fontFamily: 'inherit',
-                  }}>Sign in</button>
+                  }}>Sign In</button>
                 </Link>
                 <Link href="/auth/register">
                   <button style={{
                     padding: '7px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
                     background: 'var(--primary)', border: 'none', color: 'oklch(98% 0.005 175)',
                     cursor: 'pointer', fontFamily: 'inherit',
-                  }}>Join</button>
+                  }}>Join Free</button>
                 </Link>
               </div>
             )

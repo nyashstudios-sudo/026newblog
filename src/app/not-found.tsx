@@ -94,6 +94,30 @@ export default function NotFound() {
             </svg>
             Explore
           </Link>
+          <Link
+            href="/contact"
+            style={{
+              padding: '12px 24px',
+              borderRadius: 10,
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              border: '1px solid var(--border)',
+              textDecoration: 'none',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+            Contact
+          </Link>
         </div>
 
         <div style={{

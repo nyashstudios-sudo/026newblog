@@ -42,6 +42,13 @@ export const GET = requireRole('admin', async (req) => {
     itemsImportedAsArticles = count || 0;
   }
 
+  // Get recent items across all feeds
+  const { data: recentItems } = await sb
+    .from('rss_items')
+    .select('id, title, feed_id, feed:rss_feeds!feed_id(name), imported_at')
+    .order('imported_at', { ascending: false })
+    .limit(5);
+
   const stats = {
     totalFeeds: totalFeeds || 0,
     activeFeeds: activeFeeds || 0,
@@ -52,5 +59,5 @@ export const GET = requireRole('admin', async (req) => {
     itemsImportedAsArticles,
   };
 
-  return NextResponse.json({ feeds: feeds || [], stats });
+  return NextResponse.json({ feeds: feeds || [], stats, recentItems: recentItems || [] });
 });

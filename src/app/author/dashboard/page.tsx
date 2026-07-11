@@ -113,14 +113,40 @@ export default function AuthorDashboardPage() {
 
   const initials = `${user.firstName[0]}${user.lastName[0]}`;
 
-  const statCards = [
-    { label: 'Total Views', value: totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}K` : totalViews.toString(), icon: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z' },
-    { label: 'Total Likes', value: totalLikes >= 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes.toString(), icon: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z' },
-    { label: 'Comments', value: totals.comments >= 1000 ? `${(totals.comments / 1000).toFixed(1)}K` : totals.comments.toString(), icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
-    { label: 'Articles', value: articles.length.toString(), icon: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8' },
-  ];
+  const publishedCount = articles.filter(a => a.status === 'published').length;
+  const draftCount = articles.filter(a => a.status === 'draft').length;
+
+  const viewsChange = (() => {
+    if (dailyViews.length < 14) return null;
+    const recent = dailyViews.slice(-7).reduce((s, d) => s + d.count, 0);
+    const prev = dailyViews.slice(-14, -7).reduce((s, d) => s + d.count, 0);
+    if (prev === 0) return null;
+    return ((recent - prev) / prev * 100).toFixed(1);
+  })();
 
   const maxView = Math.max(...dailyViews.map(d => d.count), 1);
+
+  const mockActivity = [
+    { type: 'like' as const, text: <><strong>Sarah M.</strong> and 14 others liked your article &ldquo;How Nairobi Became Africa&apos;s Silicon Savannah&rdquo;</>, time: '2 hours ago' },
+    { type: 'comment' as const, text: <><strong>James K.</strong> commented: &ldquo;Great analysis on the startup ecosystem.&rdquo;</>, time: '4 hours ago' },
+    { type: 'earn' as const, text: <>You earned <strong>$12.40</strong> from &ldquo;M-Pesa&apos;s Next Chapter&rdquo; reaching 5,000 views milestone</>, time: '6 hours ago' },
+    { type: 'share' as const, text: <>Your article &ldquo;Digital Democracy in Africa&rdquo; was shared 23 times on social media</>, time: 'Yesterday' },
+    { type: 'like' as const, text: <>Your article &ldquo;Marathon Dominance&rdquo; is trending in the Sports category</>, time: 'Yesterday' },
+  ];
+
+  const statCards = [
+    { label: 'Total Views', value: totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}K` : totalViews.toString(), change: viewsChange ? `${viewsChange.startsWith('-') ? '' : '+'}${viewsChange}%` : null, up: viewsChange ? !viewsChange.startsWith('-') : true },
+    { label: 'Total Earnings', value: '$0.00', change: null, up: true },
+    { label: 'Articles Published', value: publishedCount.toString(), change: null, up: true },
+    { label: 'Total Followers', value: totals.comments >= 1000 ? `${(totals.comments / 1000).toFixed(1)}K` : totals.comments.toString(), change: null, up: true },
+  ];
+
+  const statusIconPath: Record<string, string> = {
+    like: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
+    comment: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+    share: 'M18 5a3 3 0 0 0-3 3c0 .2 0 .4.1.6l-7.2 4.3a3 3 0 0 0-1.9-.7 3 3 0 1 0 3 3c0-.2 0-.4-.1-.6l7.2-4.3a3 3 0 0 0 1.9.7 3 3 0 1 0 0-6z',
+    earn: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
+  };
 
   return (
     <div className="dash-layout">
@@ -182,41 +208,39 @@ export default function AuthorDashboardPage() {
           </div>
         )}
 
-        <div className="dash-stats">
+        <div className="author-stats-grid">
           {statCards.map(s => (
-            <div key={s.label} className="dash-stat-card">
-              <div className="dash-stat-stat">
-                <div className="dash-stat-label">{s.label}</div>
-                <div className="dash-stat-value">{s.value}</div>
-              </div>
-              <div className="dash-stat-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={s.icon} />
-                </svg>
-              </div>
+            <div key={s.label} className="author-stat-card">
+              <div className="author-stat-label">{s.label}</div>
+              <div className="author-stat-value">{s.value}</div>
+              {s.change && (
+                <span className={`author-stat-change ${s.up ? 'up' : 'down'}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points={s.up ? '23 6 13.5 15.5 8.5 10.5 1 18' : '23 18 13.5 8.5 8.5 13.5 1 6'} /></svg>
+                  {s.change}
+                </span>
+              )}
             </div>
           ))}
         </div>
 
-        <div className="dash-content-grid">
-          <div className="dash-card">
-            <div className="dash-card-header">
-              <h3 className="dash-card-title">Views (30 days)</h3>
-              <div className="chart-period">
+        <div className="author-content-grid">
+          <div className="author-chart-container">
+            <div className="author-chart-header">
+              <h3 className="author-chart-title">Views & Engagement</h3>
+              <div className="author-chart-period">
                 {['7D', '30D', '90D', '1Y'].map(p => (
-                  <button key={p} className={`chart-period-btn${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>{p}</button>
+                  <button key={p} className={`author-chart-period-btn${period === p ? ' active' : ''}`} onClick={() => setPeriod(p)}>{p}</button>
                 ))}
               </div>
             </div>
-            <div ref={chartRef} className="dash-card-content" style={{ height: 180, display: 'flex', alignItems: 'flex-end', gap: 3, paddingTop: 8 }}>
-              {dailyViews.slice(dailyViews.length - 30).map((d, i) => (
+            <div ref={chartRef} className="author-chart-area">
+              {dailyViews.slice(dailyViews.length - 30).map((d) => (
                 <div key={d.date} style={{
                   flex: 1, borderRadius: '3px 3px 0 0',
                   background: `oklch(45% 0.12 175 / ${0.3 + (d.count / maxView) * 0.7})`,
                   height: `${(d.count / maxView) * 100}%`,
                   minHeight: d.count > 0 ? 4 : 0,
                   transition: 'height 0.3s, background 0.3s',
-                  position: 'relative',
                 }}
                   title={`${d.date}: ${d.count} views`}
                 />
@@ -224,29 +248,36 @@ export default function AuthorDashboardPage() {
             </div>
           </div>
 
-          <div className="dash-card">
-            <div className="dash-card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4, marginBottom: 16 }}>
-              <h3 className="dash-card-title" style={{ marginBottom: 0 }}>Quick Overview</h3>
+          <div className="author-earnings-panel">
+            <div className="author-earnings-header">
+              <h3 className="author-earnings-title">Earnings</h3>
+              <p className="author-earnings-subtitle">Revenue split: 70/30 (you/platform)</p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="author-earnings-balance">
+              <div className="author-earnings-amount">$0.00</div>
+              <div className="author-earnings-currency">Available balance (KES 0)</div>
+            </div>
+            <div className="author-earnings-breakdown">
               {[
-                { label: 'Published', value: articles.filter(a => a.status === 'published').length, color: 'var(--success)' },
-                { label: 'Drafts', value: articles.filter(a => a.status === 'draft').length, color: 'var(--warning)' },
-                { label: 'Total Views', value: totalViews.toLocaleString(), color: 'var(--primary)' },
-                { label: 'Total Likes', value: totalLikes.toLocaleString(), color: 'var(--error)' },
-              ].map(s => (
-                <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: 'var(--bg-base)' }}>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{s.label}</span>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: s.color }}>{s.value}</span>
+                { label: 'This month', value: '$0.00' },
+                { label: 'Last month', value: '$0.00' },
+                { label: 'Pending', value: '$0.00' },
+                { label: 'Lifetime earnings', value: '$0.00' },
+              ].map(r => (
+                <div key={r.label} className="author-earnings-row">
+                  <span className="author-earnings-row-label">{r.label}</span>
+                  <span className="author-earnings-row-value">{r.value}</span>
                 </div>
               ))}
             </div>
+            <button className="author-withdraw-btn">Withdraw via M-Pesa</button>
+            <p className="author-withdraw-info">Minimum withdrawal: $50 &middot; Processes within 24 hours</p>
           </div>
         </div>
 
-        <div className="dash-card" style={{ marginTop: 24 }}>
-          <div className="dash-card-header">
-            <h3 className="dash-card-title">Your Articles</h3>
+        <div className="author-articles-section">
+          <div className="author-articles-header">
+            <h3 className="author-articles-title">Your Articles</h3>
             <div className="articles-filter">
               {['All', 'Published', 'Drafts', 'In Review'].map(f => (
                 <button key={f} className={`articles-filter-btn${articleFilter === f ? ' active' : ''}`} onClick={() => setArticleFilter(f)}>{f}</button>
@@ -258,67 +289,68 @@ export default function AuthorDashboardPage() {
               {articleFilter === 'All' ? 'No articles yet. Write your first article!' : `No ${articleFilter.toLowerCase()} articles.`}
             </div>
           ) : (
-            <div className="articles-table-wrapper">
-              <table className="articles-table">
-                <thead>
-                  <tr>
-                    <th>Article</th>
-                    <th>Status</th>
-                    <th>Views</th>
-                    <th>Likes</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredArticles.map((a) => {
-                    const statusClass = a.status === 'published' ? 'status-published' : a.status === 'draft' ? 'status-draft' : 'status-review';
-                    const statusLabel = a.status.charAt(0).toUpperCase() + a.status.slice(1);
-                    return (
-                      <tr key={a.id}>
-                        <td>
-                          <Link href={`/article/${a.slug}`} className="article-title-cell" style={{ textDecoration: 'none', color: 'inherit' }}>
-                            <span className="article-title-text">{a.title}</span>
+            <table className="articles-table">
+              <thead>
+                <tr>
+                  <th>Article</th>
+                  <th>Status</th>
+                  <th>Views</th>
+                  <th>Likes</th>
+                  <th>Earnings</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredArticles.map((a) => {
+                  const statusClass = a.status === 'published' ? 'status-published' : a.status === 'draft' ? 'status-draft' : 'status-review';
+                  const statusLabel = a.status.charAt(0).toUpperCase() + a.status.slice(1);
+                  return (
+                    <tr key={a.id}>
+                      <td>
+                        <Link href={`/article/${a.slug}`} className="article-title-cell" style={{ textDecoration: 'none', color: 'inherit' }}>
+                          <span className="article-title-text">{a.title}</span>
+                        </Link>
+                      </td>
+                      <td><span className={`status-badge ${statusClass}`}>{statusLabel}</span></td>
+                      <td className="article-stats-cell">{Number(a.viewCount) >= 1000 ? `${(Number(a.viewCount) / 1000).toFixed(1)}K` : a.viewCount.toString()}</td>
+                      <td className="article-stats-cell">{a.likeCount}</td>
+                      <td className="article-stats-cell">--</td>
+                      <td>
+                        <div className="article-actions">
+                          <Link href={`/article/${a.slug}`} className="article-action-btn" title="View">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                           </Link>
-                        </td>
-                        <td><span className={`status-badge ${statusClass}`}>{statusLabel}</span></td>
-                        <td className="article-stats-cell">{Number(a.viewCount) >= 1000 ? `${(Number(a.viewCount) / 1000).toFixed(1)}K` : a.viewCount.toString()}</td>
-                        <td className="article-stats-cell">{a.likeCount}</td>
-                        <td>
-                          <div className="article-actions">
-                            <Link href={`/article/${a.slug}`} className="article-action-btn" title="View">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          <button className="article-action-btn" title="Edit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
 
-        {dailyViews.length > 0 && (
-          <div className="dash-card" style={{ marginTop: 24 }}>
-            <div className="dash-card-header">
-              <h3 className="dash-card-title">Daily Views</h3>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
-              {dailyViews.slice().reverse().slice(0, 14).reverse().map(d => (
-                <div key={d.date} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: '0.78rem' }}>
-                  <span style={{ color: 'var(--text-tertiary)', width: 50, flexShrink: 0 }}>
-                    {new Date(d.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                  </span>
-                  <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'var(--bg-inset)', overflow: 'hidden' }}>
-                    <div style={{ width: `${(d.count / maxView) * 100}%`, height: '100%', borderRadius: 3, background: 'var(--primary)', transition: 'width 0.3s' }} />
-                  </div>
-                  <span style={{ color: 'var(--text-secondary)', width: 40, textAlign: 'right', fontWeight: 600 }}>{d.count}</span>
-                </div>
-              ))}
-            </div>
+        <div className="author-activity-section">
+          <div className="author-articles-header">
+            <h3 className="author-articles-title">Recent Activity</h3>
           </div>
-        )}
+          <div className="activity-list">
+            {mockActivity.map((a, i) => (
+              <div key={i} className="activity-item">
+                <div className={`activity-icon ${a.type}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={statusIconPath[a.type]} /></svg>
+                </div>
+                <div className="activity-content">
+                  <div className="activity-text">{a.text}</div>
+                  <div className="activity-time">{a.time}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     </div>
   );
