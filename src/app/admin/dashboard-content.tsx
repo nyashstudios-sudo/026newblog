@@ -13,8 +13,8 @@ interface Feed {
 }
 
 interface DashboardData {
-  overview: { users: number; authors: number; articles: number; published: number; pendingApplications: number; totalViews: number; totalEarnings: number; totalPayouts: number; newUsers30d: number };
-  topArticles: { title: string; slug: string; viewCount: number; author: { firstName: string; lastName: string } }[];
+  overview: { users: number; authors: number; articles: number; published: number; pendingApplications: number; totalViews: number; sourcedViews: number; totalEarnings: number; totalPayouts: number; newUsers30d: number; sourcedArticles: number; inHouseArticles: number };
+  topArticles: { title: string; slug: string; viewCount: number; sourceName?: string | null; sourceUrl?: string | null; author: { firstName: string; lastName: string } }[];
   securityEvents: { eventType: string; createdAt: string; user?: { username: string } | null }[];
 }
 
@@ -82,9 +82,9 @@ export default function AdminDashboardContent() {
         {[
           { label: 'Total Users', value: o.users.toString(), change: `+${o.newUsers30d} this month`, up: true },
           { label: 'Authors', value: o.authors.toString(), change: `${o.pendingApplications} pending apps`, up: o.pendingApplications === 0, href: '/admin/authors' },
-          { label: 'Articles', value: o.articles.toString(), change: `${o.published} published`, up: true },
-          { label: 'Pending Review', value: (o.articles - o.published).toString(), change: `${o.articles - o.published} need review`, up: false },
-          { label: 'Total Views', value: o.totalViews >= 1000 ? `${(o.totalViews / 1000).toFixed(1)}K` : o.totalViews.toString(), change: 'all time', up: true },
+          { label: 'In-House Articles', value: o.inHouseArticles.toString(), change: `${o.published} total published`, up: true },
+          { label: 'Sourced Articles', value: o.sourcedArticles.toString(), change: `${o.sourcedArticles} from external sources`, up: true },
+          { label: 'Total Views', value: o.totalViews >= 1000 ? `${(o.totalViews / 1000).toFixed(1)}K` : o.totalViews.toString(), change: `${o.sourcedViews >= 1000 ? `${(o.sourcedViews / 1000).toFixed(1)}K` : o.sourcedViews} from sourced`, up: true },
           { label: 'Earnings', value: `$${(o.totalEarnings || 0).toLocaleString()}`, change: `$${(o.totalPayouts || 0)} paid out`, up: true },
         ].map(s => (
           <div key={s.label} className="dash-stat-card" style={s.href ? { cursor: 'pointer' } : undefined} onClick={() => s.href && window.location.assign(s.href)}>
@@ -117,11 +117,14 @@ export default function AdminDashboardContent() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {data.topArticles.map(a => (
-              <Link key={a.slug} href={`/article/${a.slug}`} style={{
+              <Link key={a.slug} href={a.sourceUrl || `/article/${a.slug}`} target={a.sourceUrl ? '_blank' : undefined} rel={a.sourceUrl ? 'noopener noreferrer' : undefined} style={{
                 display: 'flex', justifyContent: 'space-between', padding: 10, borderRadius: 8,
                 border: '1px solid var(--border-subtle)', textDecoration: 'none', color: 'inherit', fontSize: '0.85rem',
               }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{a.title}</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {a.title}
+                  {a.sourceName && <span style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginLeft: 6 }}>(via {a.sourceName})</span>}
+                </span>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginLeft: 12, flexShrink: 0 }}>
                   {a.viewCount >= 1000 ? `${(a.viewCount / 1000).toFixed(1)}K` : a.viewCount} views
                 </span>

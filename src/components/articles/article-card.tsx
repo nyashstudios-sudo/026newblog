@@ -16,6 +16,8 @@ export interface ArticleCardData {
   commentCount?: number;
   shareCount?: number;
   publishedAt?: string | Date | null;
+  sourceName?: string | null;
+  sourceUrl?: string | null;
   category?: { name: string; slug: string } | null;
   author: {
     id: string;
@@ -37,9 +39,16 @@ export function ArticleCard({ article, index = 0 }: { article: ArticleCardData; 
     >
       <div className="article-card-body">
         <div>
-          {article.category && (
-            <span className="article-card-category">{article.category.name}</span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            {article.category && (
+              <span className="article-card-category">{article.category.name}</span>
+            )}
+            {article.sourceName && (
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                via {article.sourceName}
+              </span>
+            )}
+          </div>
           <h3 className="article-card-title" style={{ fontFamily: 'var(--font-newsreader), Georgia, serif' }}>
             {article.title}
           </h3>

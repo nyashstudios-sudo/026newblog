@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from './auth-provider';
+import { createClient } from '@/lib/supabase/client';
 
 interface TypingUser {
   conversationId: string;
@@ -36,59 +37,50 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const [incomingMessages, setIncomingMessages] = useState<Map<string, unknown>>(new Map());
   const [lastReadReceipt, setLastReadReceipt] = useState<ReadReceipt | null>(null);
-  const esRef = useRef<EventSource | null>(null);
-  const reconnectRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const typingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const connect = useCallback(() => {
+  useEffect(() => {
     if (!user) return;
-    if (esRef.current?.readyState === EventSource.OPEN) return;
 
-    const es = new EventSource('/api/messages/stream');
-    esRef.current = es;
+    const supabase = createClient();
+    const channel = supabase.channel(`user:${user.id}`);
 
-    es.onopen = () => setConnected(true);
+    channel.on('broadcast', { event: 'message' }, (e) => {
+      setIncomingMessages((prev) => {
+        const next = new Map(prev);
+        next.set((e.payload as any).id, e.payload);
+        return next;
+      });
+    });
 
-    es.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type === 'connected') return;
+    channel.on('broadcast', { event: 'typing' }, (e) => {
+      const payload = e.payload as TypingUser;
+      const key = `${payload.conversationId}:${payload.userId}`;
+      setTypingUsers((prev) => {
+        if (prev.some((t) => t.conversationId === payload.conversationId && t.userId === payload.userId)) return prev;
+        return [...prev, payload];
+      });
 
-        if (data.type === 'message') {
-          setIncomingMessages((prev) => {
-            const next = new Map(prev);
-            next.set(data.payload.id, data.payload);
-            return next;
-          });
-        }
+      const existing = typingTimeoutsRef.current.get(key);
+      if (existing) clearTimeout(existing);
 
-        if (data.type === 'typing') {
-          const key = `${data.payload.conversationId}:${data.payload.userId}`;
-          setTypingUsers((prev) => {
-            if (prev.some((t) => t.conversationId === data.payload.conversationId && t.userId === data.payload.userId)) return prev;
-            return [...prev, data.payload];
-          });
+      const timeout = setTimeout(() => {
+        setTypingUsers((prev) => prev.filter((t) => t.conversationId !== payload.conversationId || t.userId !== payload.userId));
+        typingTimeoutsRef.current.delete(key);
+      }, 3000);
+      typingTimeoutsRef.current.set(key, timeout);
+    });
 
-          const existing = typingTimeoutsRef.current.get(key);
-          if (existing) clearTimeout(existing);
+    channel.on('broadcast', { event: 'read_receipt' }, (e) => {
+      setLastReadReceipt(e.payload as ReadReceipt);
+    });
 
-          const timeout = setTimeout(() => {
-            setTypingUsers((prev) => prev.filter((t) => t.conversationId !== data.payload.conversationId || t.userId !== data.payload.userId));
-            typingTimeoutsRef.current.delete(key);
-          }, 3000);
-          typingTimeoutsRef.current.set(key, timeout);
-        }
+    channel.subscribe((status) => {
+      setConnected(status === 'SUBSCRIBED');
+    });
 
-        if (data.type === 'read_receipt') {
-          setLastReadReceipt(data.payload);
-        }
-      } catch {}
-    };
-
-    es.onerror = () => {
-      setConnected(false);
-      es.close();
-      reconnectRef.current = setTimeout(connect, 5000);
+    return () => {
+      channel.unsubscribe();
     };
   }, [user]);
 
@@ -100,14 +92,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ conversationId, recipientId }),
     }).catch(() => {});
   }, [user]);
-
-  useEffect(() => {
-    connect();
-    return () => {
-      if (reconnectRef.current) clearTimeout(reconnectRef.current);
-      esRef.current?.close();
-    };
-  }, [connect]);
 
   return (
     <ChatContext.Provider value={{ connected, typingUsers, incomingMessages, lastReadReceipt, setTyping }}>

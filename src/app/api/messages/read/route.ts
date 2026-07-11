@@ -22,6 +22,18 @@ export const POST = requireAuth(async (req, user) => {
     return NextResponse.json({ error: 'Not a participant' }, { status: 403 });
   }
 
+  // Persist read receipt in DB
+  await sb.from('messages')
+    .update({ is_read: true })
+    .eq('conversation_id', conversationId)
+    .neq('sender_id', user.id)
+    .eq('is_read', false);
+
+  await sb.from('conversation_participants')
+    .update({ last_read_at: new Date().toISOString() })
+    .eq('conversation_id', conversationId)
+    .eq('user_id', user.id);
+
   const { data: lastMessage } = await sb.from('messages')
     .select('sender_id').eq('id', lastReadMessageId).single();
 

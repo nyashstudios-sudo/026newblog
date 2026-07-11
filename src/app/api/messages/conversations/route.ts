@@ -25,7 +25,7 @@ export const GET = requireAuth(async (req, user) => {
       )
     `)
     .eq('user_id', user.id)
-    .order('last_read_at', { ascending: false, nullsFirst: false });
+    .order('conversation_id'); // will sort after mapping by updatedAt
 
   let conversations = (participations || []).map((p: any) => {
     const conv = p.conversation;
@@ -40,6 +40,9 @@ export const GET = requireAuth(async (req, user) => {
       unread: lastMessage ? !lastMessage.is_read && lastMessage.sender_id !== user.id : false,
     };
   });
+
+  // Sort by most recent activity
+  conversations.sort((a: any, b: any) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
 
   if (search) {
     const q = search.toLowerCase();

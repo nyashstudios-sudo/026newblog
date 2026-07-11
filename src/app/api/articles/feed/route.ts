@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { createSupabaseContext } from '@/lib/supabase/context';
 import { cacheGet, cacheSet } from '@/lib/redis';
 
-const articleSelect = 'id, title, slug, excerpt, cover_image_url, reading_time_minutes, view_count, like_count, comment_count, share_count, published_at, tags, category:categories!category_id(name, slug), author:users!author_id(id, first_name, last_name, username, avatar_url)';
+const articleSelect = 'id, title, slug, excerpt, cover_image_url, reading_time_minutes, view_count, like_count, comment_count, share_count, published_at, tags, source_name, source_url, category:categories!category_id(name, slug), author:users!author_id(id, first_name, last_name, username, avatar_url)';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

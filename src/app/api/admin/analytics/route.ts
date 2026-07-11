@@ -9,7 +9,7 @@ export const GET = requireRole('admin', async () => {
   const sb = ctx.supabaseAdmin as any;
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [userCount, authorCount, articleCount, publishedCount, pendingApps, recentUsers, securityEvents, topArticles] = await Promise.all([
+  const [userCount, authorCount, articleCount, publishedCount, pendingApps, recentUsers, securityEvents, topArticles, sourcedCount] = await Promise.all([
     sb.from('users').select('*', { count: 'exact', head: true }).eq('is_active', true),
     sb.from('users').select('*', { count: 'exact', head: true }).eq('role', 'author').eq('is_active', true),
     sb.from('articles').select('*', { count: 'exact', head: true }),
@@ -17,11 +17,13 @@ export const GET = requireRole('admin', async () => {
     sb.from('author_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     sb.from('users').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     sb.from('security_events').select('*, user:users(username, email)').order('created_at', { ascending: false }).limit(10),
-    sb.from('articles').select('id, title, slug, view_count, like_count, author:users!author_id(first_name, last_name, username)').eq('status', 'published').order('view_count', { ascending: false }).limit(5),
+    sb.from('articles').select('id, title, slug, view_count, like_count, source_name, source_url, author:users!author_id(first_name, last_name, username)').eq('status', 'published').order('view_count', { ascending: false }).limit(5),
+    sb.from('articles').select('*', { count: 'exact', head: true }).not('source_url', 'is', null),
   ]);
 
-  const { data: viewSum } = await sb.from('articles').select('view_count');
-  const totalViews = (viewSum || []).reduce((sum: number, a: any) => sum + Number(a.view_count || 0), 0);
+  const { data: allArticles } = await sb.from('articles').select('view_count, source_url');
+  const totalViews = (allArticles || []).reduce((sum: number, a: any) => sum + Number(a.view_count || 0), 0);
+  const sourcedViews = (allArticles || []).filter((a: any) => a.source_url).reduce((sum: number, a: any) => sum + Number(a.view_count || 0), 0);
 
   const { data: earningSum } = await sb.from('earnings').select('amount_usd');
   const totalEarnings = (earningSum || []).reduce((sum: number, e: any) => sum + Number(e.amount_usd || 0), 0);
@@ -37,9 +39,12 @@ export const GET = requireRole('admin', async () => {
       published: publishedCount.count || 0,
       pendingApplications: pendingApps.count || 0,
       totalViews,
+      sourcedViews,
       totalEarnings,
       totalPayouts,
       newUsers30d: recentUsers.count || 0,
+      sourcedArticles: sourcedCount.count || 0,
+      inHouseArticles: (publishedCount.count || 0) - (sourcedCount.count || 0),
     },
     topArticles: topArticles.data || [],
     securityEvents: securityEvents.data || [],
