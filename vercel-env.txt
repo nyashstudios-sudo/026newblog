@@ -1,0 +1,7 @@
+SUPABASE_URL="https://glmrranchflzuxvjthli.supabase.co"
+SUPABASE_PUBLISHABLE_KEY="sb_publishable_SbztgiJnkqGjlsv63eVv7g__suxnfL_"
+SUPABASE_SECRET_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsbXJyYW5jaGZsenV4dmp0aGxpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MzY5ODMzNCwiZXhwIjoyMDk5Mjc0MzM0fQ.aXtvIZXphf4t_j39wJEaPrWzH1p0iMGBjeWxvEX9Quc"
+SUPABASE_JWKS_URL="https://glmrranchflzuxvjthli.supabase.co/auth/v1/.well-known/jwks.json"
+NEXT_PUBLIC_SUPABASE_URL="https://glmrranchflzuxvjthli.supabase.co"
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="sb_publishable_SbztgiJnkqGjlsv63eVv7g__suxnfL_"
+NEXT_PUBLIC_SITE_URL= "026newblog.vercel.app"
