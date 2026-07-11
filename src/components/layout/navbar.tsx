@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Avatar } from '@/components/ui/avatar';
@@ -8,9 +9,11 @@ import { Bell, Search, Menu, X, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export function Navbar() {
+  const pathname = usePathname();
   const { user, loading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const isAuthPage = pathname.startsWith('/auth/');
 
   useEffect(() => {
     if (!user) return;
@@ -65,7 +68,7 @@ export function Navbar() {
           >
             <Search className="w-[18px] h-[18px]" />
           </Link>
-          <ThemeToggle />
+          {!isAuthPage && <ThemeToggle />}
           {user && (
             <Link
               href="/notifications"
@@ -151,7 +154,7 @@ export function Navbar() {
             </button>
           )}
           <div className="flex items-center gap-2 pt-2">
-            <ThemeToggle />
+            {!isAuthPage && <ThemeToggle />}
             {!loading && !user && (
               <>
                 <Link href="/auth/login" onClick={() => setMenuOpen(false)}>

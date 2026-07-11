@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getCurrentUser, requireAuth, articleCardSelect } from '@/lib/auth';
+import { getCurrentUser, requireAuth } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 import { generateArticleSlug, countWords, estimateReadingTime } from '@/lib/utils';
 
-function j(data: unknown) {
-  return NextResponse.json(JSON.parse(JSON.stringify(data, (_k: string, v: unknown) => (typeof v === 'bigint' ? Number(v) : v))));
-}
+const articleSelect = 'id, title, slug, excerpt, cover_image_url, reading_time_minutes, view_count, like_count, comment_count, share_count, published_at, tags, category:categories!category_id(name, slug), author:users!author_id(id, first_name, last_name, username, avatar_url)';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -14,39 +12,39 @@ export async function GET(req: Request) {
   const category = searchParams.get('category');
   const author = searchParams.get('author');
   const sort = searchParams.get('sort') || 'published_at';
-
-  const where: Record<string, unknown> = {};
   const isOwn = searchParams.get('own') === 'true';
 
+  const { data: ctx } = await createSupabaseContext({ auth: 'none' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  let query = (ctx.supabase as any)
+    .from('articles')
+    .select(articleSelect, { count: 'exact' });
+
   if (!author || !isOwn) {
-    where.status = 'published';
+    query = query.eq('status', 'published');
   }
-  if (category) where.category = { slug: category };
-  if (author) where.author = { username: author };
+  if (author && !isOwn) {
+    query = query.eq('author.username', author);
+  }
+  if (author && isOwn) {
+    // For own articles, show all statuses
+  }
+  if (category) {
+    query = query.eq('category.slug', category);
+  }
 
-  const orderBy: Record<string, 'desc'> = {};
-  if (sort === 'popular') orderBy.viewCount = 'desc';
-  else if (sort === 'likes') orderBy.likeCount = 'desc';
-  else orderBy.publishedAt = 'desc';
+  if (sort === 'popular') query = query.order('view_count', { ascending: false });
+  else if (sort === 'likes') query = query.order('like_count', { ascending: false });
+  else query = query.order('published_at', { ascending: false });
 
-  const select = isOwn
-    ? { ...articleCardSelect, status: true }
-    : articleCardSelect;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+  const { data: articles, count } = await query.range(from, to);
 
-  const [articles, total] = await Promise.all([
-    db.article.findMany({
-      where,
-      orderBy,
-      skip: (page - 1) * limit,
-      take: limit,
-      select,
-    }),
-    db.article.count({ where }),
-  ]);
-
-  return j({
-    articles,
-    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  return NextResponse.json({
+    articles: articles || [],
+    pagination: { page, limit, total: count || 0, totalPages: Math.ceil((count || 0) / limit) },
   });
 }
 
@@ -59,26 +57,31 @@ export const POST = requireAuth(async (req, user) => {
   const wordCount = body.wordCount ?? countWords(body.contentHtml || '');
   const slug = body.slug || generateArticleSlug(body.title);
 
-  const article = await db.article.create({
-    data: {
-      authorId: user.id,
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const { data: article } = await (ctx.supabaseAdmin as any)
+    .from('articles')
+    .insert({
+      author_id: user.id,
       title: body.title,
       subtitle: body.subtitle,
       slug,
       content: body.content || {},
-      contentHtml: body.contentHtml,
+      content_html: body.contentHtml,
       excerpt: body.excerpt,
-      coverImageUrl: body.coverImageUrl,
-      coverImageCaption: body.coverImageCaption,
-      categoryId: body.categoryId,
+      cover_image_url: body.coverImageUrl,
+      cover_image_caption: body.coverImageCaption,
+      category_id: body.categoryId,
       tags: JSON.stringify(body.tags || []),
-      metaDescription: body.metaDescription,
-      readingTimeMinutes: estimateReadingTime(wordCount),
-      wordCount,
+      meta_description: body.metaDescription,
+      reading_time_minutes: estimateReadingTime(wordCount),
+      word_count: wordCount,
       status: body.status || 'draft',
-      publishedAt: body.status === 'published' ? new Date() : null,
-    },
-  });
+      published_at: body.status === 'published' ? new Date().toISOString() : null,
+    })
+    .select()
+    .single();
 
   return NextResponse.json({ article }, { status: 201 });
 });

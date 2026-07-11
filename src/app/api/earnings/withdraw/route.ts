@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireRole, verifyPin, AuthError } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { createSupabaseContext } from '@/lib/supabase/context';
 import { initiateB2CPayment } from '@/lib/mpesa';
 
 export const POST = requireRole(['author', 'admin'], async (req, user) => {
@@ -13,22 +13,28 @@ export const POST = requireRole(['author', 'admin'], async (req, user) => {
 
     await verifyPin(user.id, pin);
 
-    const settings = await db.platformSetting.findUnique({ where: { key: 'withdrawal_threshold_usd' } });
+    const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+    if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+    const sb = ctx.supabaseAdmin as any;
+
+    const { data: settings } = await sb.from('platform_settings')
+      .select('value').eq('key', 'withdrawal_threshold_usd').maybeSingle();
     const threshold = Number((settings?.value as { amount?: number })?.amount ?? 50);
 
     if (amount < threshold) {
       return NextResponse.json({ error: `Minimum withdrawal is $${threshold}` }, { status: 400 });
     }
 
-    const [earningsAgg, payoutsAgg] = await Promise.all([
-      db.earning.aggregate({ where: { authorId: user.id }, _sum: { amountUsd: true } }),
-      db.payout.aggregate({
-        where: { authorId: user.id, status: { in: ['completed', 'processing', 'pending'] } },
-        _sum: { amountUsd: true },
-      }),
+    const [{ data: earnings }, { data: payouts }] = await Promise.all([
+      sb.from('earnings').select('amount_usd').eq('author_id', user.id),
+      sb.from('payouts').select('amount_usd').eq('author_id', user.id).in('status', ['completed', 'processing', 'pending']),
     ]);
 
-    const balance = Number(earningsAgg._sum.amountUsd || 0) - Number(payoutsAgg._sum.amountUsd || 0);
+    const totalEarned = (earnings || []).reduce((sum: number, e: any) => sum + Number(e.amount_usd || 0), 0);
+    const totalWithdrawn = (payouts || []).reduce((sum: number, p: any) => sum + Number(p.amount_usd || 0), 0);
+    const balance = totalEarned - totalWithdrawn;
+
     if (amount > balance) {
       return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
     }
@@ -36,16 +42,14 @@ export const POST = requireRole(['author', 'admin'], async (req, user) => {
     const exchangeRate = 129.3;
     const amountKes = amount * exchangeRate;
 
-    const payout = await db.payout.create({
-      data: {
-        authorId: user.id,
-        amountUsd: amount,
-        amountKes,
-        exchangeRate,
-        mpesaPhone: phone,
-        status: 'processing',
-      },
-    });
+    const { data: payout } = await sb.from('payouts').insert({
+      author_id: user.id,
+      amount_usd: amount,
+      amount_kes: amountKes,
+      exchange_rate: exchangeRate,
+      mpesa_phone: phone,
+      status: 'processing',
+    }).select().single();
 
     try {
       const mpesaResult = await initiateB2CPayment({
@@ -54,10 +58,9 @@ export const POST = requireRole(['author', 'admin'], async (req, user) => {
         remarks: '026Newsblog Author Payout',
       });
 
-      await db.payout.update({
-        where: { id: payout.id },
-        data: { mpesaTransactionId: mpesaResult.conversationId },
-      });
+      await sb.from('payouts').update({
+        mpesa_transaction_id: mpesaResult.conversationId,
+      }).eq('id', payout.id);
 
       return NextResponse.json({
         payout: {
@@ -70,10 +73,10 @@ export const POST = requireRole(['author', 'admin'], async (req, user) => {
         },
       });
     } catch {
-      await db.payout.update({
-        where: { id: payout.id },
-        data: { status: 'failed', failedReason: 'M-Pesa request failed' },
-      });
+      await sb.from('payouts').update({
+        status: 'failed',
+        failed_reason: 'M-Pesa request failed',
+      }).eq('id', payout.id);
       return NextResponse.json({ error: 'Payment failed. Please try again.' }, { status: 500 });
     }
   } catch (error) {

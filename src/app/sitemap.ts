@@ -1,18 +1,20 @@
-import { db } from '@/lib/db';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://026newsblog.vercel.app';
 
 export default async function sitemap() {
-  const articles = await db.article.findMany({
-    where: { status: 'published' },
-    select: { slug: true, updatedAt: true, publishedAt: true },
-    orderBy: { publishedAt: 'desc' },
-    take: 500,
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'none' });
+  if (!ctx) return [];
 
-  const categories = await db.category.findMany({
-    select: { slug: true },
-  });
+  const sb = ctx.supabase as any;
+
+  const { data: articles } = await sb.from('articles')
+    .select('slug, updated_at, published_at')
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .limit(500);
+
+  const { data: categories } = await sb.from('categories').select('slug');
 
   const staticPages = [
     { url: siteUrl, lastModified: new Date(), changeFrequency: 'hourly' as const, priority: 1 },
@@ -24,14 +26,14 @@ export default async function sitemap() {
     { url: `${siteUrl}/listen`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.4 },
   ];
 
-  const articlePages = articles.map((a) => ({
+  const articlePages = (articles || []).map((a: any) => ({
     url: `${siteUrl}/article/${a.slug}`,
-    lastModified: a.updatedAt || a.publishedAt || new Date(),
+    lastModified: a.updated_at || a.published_at || new Date(),
     changeFrequency: 'monthly' as const,
     priority: 0.6,
   }));
 
-  const categoryPages = categories.map((c) => ({
+  const categoryPages = (categories || []).map((c: any) => ({
     url: `${siteUrl}/categories?cat=${c.slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly' as const,

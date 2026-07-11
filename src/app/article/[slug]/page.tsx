@@ -124,8 +124,11 @@ export default function ArticlePage() {
   if (loading) {
     return (
       <div className="article-layout" style={{ paddingTop: 80 }}>
-        <div className="article-header"><div className="skeleton" style={{ width: '75%', height: 32, borderRadius: 6, background: 'var(--bg-inset)' }} /></div>
-        <div className="skeleton" style={{ width: '100%', height: 400, borderRadius: 16, background: 'var(--bg-inset)' }} />
+        <div className="article-header">
+          <div className="skeleton" style={{ width: '75%', height: 32 }} />
+          <div className="skeleton" style={{ width: '40%', height: 20, marginTop: 12 }} />
+        </div>
+        <div className="skeleton" style={{ width: '100%', height: 400, marginTop: 32 }} />
       </div>
     );
   }

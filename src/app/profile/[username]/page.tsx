@@ -40,7 +40,7 @@ export default function ProfilePage() {
   };
 
   if (!profile) {
-    return <div style={{ maxWidth: 1200, margin: '0 auto', padding: '96px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading...</div>;
+    return <div style={{ maxWidth: 1200, margin: '0 auto', padding: '96px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}><span className="loading-dots">Loading</span></div>;
   }
 
   const p = profile as {

@@ -1,16 +1,9 @@
-import { SignJWT, jwtVerify } from 'jose';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { db } from './db';
+import { createSupabaseContext } from './supabase/context';
+import { createAdminClient } from '@supabase/server/core';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'dev-secret-change-in-production-min-32-chars'
-);
-const ACCESS_TOKEN_EXPIRY = '15m';
-const REFRESH_TOKEN_EXPIRY = '7d';
-const COOKIE_NAME = '026nb_session';
-const REFRESH_COOKIE = '026nb_refresh';
 
 export const registerSchema = z.object({
   email: z.string().email(),
@@ -32,165 +25,185 @@ export class AuthError extends Error {
   }
 }
 
-export async function createAccessToken(userId: string, role: string) {
-  return new SignJWT({ sub: userId, role })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime(ACCESS_TOKEN_EXPIRY)
-    .sign(JWT_SECRET);
+export type CurrentUser = {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  avatar_url: string | null;
+  role: string;
+  bio: string | null;
+};
+
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const { data: ctx, error } = await createSupabaseContext({ auth: 'user' });
+  if (error || !ctx || !ctx.userClaims) return null;
+  const { data: user } = await (ctx.supabase as any)
+    .from('users')
+    .select('id, email, first_name, last_name, username, avatar_url, role, bio')
+    .eq('id', ctx.userClaims.id)
+    .single();
+  if (!user) return null;
+  return user as CurrentUser;
 }
 
-export async function createRefreshToken(userId: string) {
-  return new SignJWT({ sub: userId, type: 'refresh' })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime(REFRESH_TOKEN_EXPIRY)
-    .sign(JWT_SECRET);
-}
-
-export async function verifyToken(token: string) {
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as { sub: string; role?: string; type?: string };
-  } catch {
-    return null;
-  }
-}
-
-export async function setAuthCookies(userId: string, role: string) {
-  const accessToken = await createAccessToken(userId, role);
-  const refreshToken = await createRefreshToken(userId);
-  const cookieStore = await cookies();
-
-  cookieStore.set(COOKIE_NAME, accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 15 * 60,
-  });
-
-  cookieStore.set(REFRESH_COOKIE, refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 7 * 24 * 60 * 60,
-  });
-
-  await db.session.create({
-    data: {
-      userId,
-      token: refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
-  });
-
-  return { accessToken, refreshToken };
-}
-
-export async function clearAuthCookies() {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
-  cookieStore.delete(REFRESH_COOKIE);
-}
-
-export async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-  if (!token) return null;
-
-  const payload = await verifyToken(token);
-  if (!payload?.sub) return null;
-
-  return db.user.findUnique({
-    where: { id: payload.sub, isActive: true },
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-      username: true,
-      avatarUrl: true,
-      role: true,
-      bio: true,
-    },
-  });
+function getEnv() {
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  const secret = process.env.SUPABASE_SECRET_KEY!;
+  return { url, publishableKeys: { default: key }, secretKeys: { default: secret } };
 }
 
 export async function registerUser(data: z.infer<typeof registerSchema>) {
   const { email, password, firstName, lastName } = data;
+  const cookieStore = await cookies();
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
 
-  const existing = await db.user.findUnique({ where: { email } });
-  if (existing) throw new AuthError('Email already registered', 'EMAIL_EXISTS');
-
-  const passwordHash = await bcrypt.hash(password, 12);
-  const baseUsername = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.replace(/[^a-z0-9]/g, '');
-  let username = baseUsername;
-  let counter = 0;
-  while (await db.user.findUnique({ where: { username } })) {
-    counter++;
-    username = `${baseUsername}${counter}`;
-  }
-
-  const user = await db.user.create({
-    data: {
-      email,
-      passwordHash,
-      firstName,
-      lastName,
-      username,
-      role: 'reader',
-      notificationPreferences: { create: {} },
-      readingGoals: { create: {} },
-      readingStreak: { create: { currentStreak: 0, longestStreak: 0 } },
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() { return cookieStore.getAll(); },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          cookieStore.set(name, value, options),
+        );
+      },
     },
   });
 
-  return user;
+  const baseUsername = `${firstName.toLowerCase()}${lastName.toLowerCase()}`.replace(/[^a-z0-9]/g, '');
+  let username = baseUsername;
+  let counter = 0;
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+  const { data: authData, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { firstName, lastName, username },
+      emailRedirectTo: `${siteUrl}/api/auth/callback`,
+    },
+  });
+
+  if (error) throw new AuthError(error.message, error.status?.toString() || 'AUTH_ERROR');
+  if (!authData.user) throw new AuthError('Registration failed', 'REGISTRATION_FAILED');
+
+  // Create default preferences via admin client
+  const env = getEnv();
+  const admin = createAdminClient({ auth: { keyName: 'default' }, env }) as any;
+  await admin.from('notification_preferences').insert({ user_id: authData.user.id }).maybeSingle();
+  await admin.from('reading_goals').insert({ user_id: authData.user.id }).maybeSingle();
+  await admin.from('reading_streaks').insert({ user_id: authData.user.id, current_streak: 0, longest_streak: 0 }).maybeSingle();
+
+  const emailConfirmed = !!authData.user.email_confirmed_at;
+
+  return {
+    id: authData.user.id,
+    email: authData.user.email!,
+    firstName,
+    lastName,
+    username,
+    role: 'reader' as const,
+    emailConfirmed,
+  };
+}
+
+export async function checkEmailVerification(userId: string): Promise<boolean> {
+  const env = getEnv();
+  const admin = createAdminClient({ auth: { keyName: 'default' }, env }) as any;
+  const { data: user } = await admin.auth.admin.getUserById(userId);
+  return !!user?.user?.email_confirmed_at;
 }
 
 export async function loginUser(data: z.infer<typeof loginSchema>) {
   const { email, password } = data;
-  const user = await db.user.findUnique({ where: { email } });
+  const cookieStore = await cookies();
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
 
-  if (!user || !user.passwordHash) {
-    throw new AuthError('Invalid credentials', 'INVALID_CREDENTIALS');
-  }
-  if (!user.isActive) {
-    throw new AuthError('Account deactivated', 'ACCOUNT_DEACTIVATED');
-  }
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() { return cookieStore.getAll(); },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          cookieStore.set(name, value, options),
+        );
+      },
+    },
+  });
 
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) {
-    await db.securityEvent.create({
-      data: { userId: user.id, eventType: 'login_failed', metadata: { email } },
-    });
-    throw new AuthError('Invalid credentials', 'INVALID_CREDENTIALS');
+  const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    if (error.message?.toLowerCase().includes('email not confirmed')) {
+      throw new AuthError('Please verify your email before logging in', 'EMAIL_NOT_CONFIRMED');
+    }
+    throw new AuthError(error.message, error.status?.toString() || 'INVALID_CREDENTIALS');
   }
+  if (!authData.user) throw new AuthError('Login failed', 'LOGIN_FAILED');
 
-  await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-  return user;
+  const user = await getCurrentUser();
+  return user ?? { id: authData.user.id, email: authData.user.email!, first_name: '', last_name: '', username: '', role: 'reader' as const };
 }
 
-export async function verifyPin(userId: string, pin: string) {
-  const userPin = await db.userPin.findUnique({ where: { userId } });
+export async function resendVerificationEmail(email: string): Promise<void> {
+  const cookieStore = await cookies();
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() { return cookieStore.getAll(); },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          cookieStore.set(name, value, options),
+        );
+      },
+    },
+  });
+
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
+  if (error) throw new AuthError(error.message, error.status?.toString() || 'RESEND_ERROR');
+}
+
+export async function logoutUser() {
+  const cookieStore = await cookies();
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() { return cookieStore.getAll(); },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          cookieStore.set(name, value, options),
+        );
+      },
+    },
+  });
+
+  await supabase.auth.signOut();
+}
+
+export async function verifyPin(userId: string, pin: string): Promise<boolean> {
+  const env = getEnv();
+  const admin = createAdminClient({ auth: { keyName: 'default' }, env }) as any;
+  const { data: userPin } = await admin.from('user_pins').select('pin_hash').eq('user_id', userId).single();
   if (!userPin) throw new AuthError('PIN not set', 'PIN_NOT_SET');
-  const valid = await bcrypt.compare(pin, userPin.pinHash);
+  const valid = await bcrypt.compare(pin, userPin.pin_hash);
   if (!valid) throw new AuthError('Invalid PIN', 'INVALID_PIN');
   return true;
 }
 
-export async function setPin(userId: string, pin: string) {
+export async function setPin(userId: string, pin: string): Promise<void> {
   const pinHash = await bcrypt.hash(pin, 10);
-  await db.userPin.upsert({
-    where: { userId },
-    update: { pinHash },
-    create: { userId, pinHash },
-  });
+  const env = getEnv();
+  const admin = createAdminClient({ auth: { keyName: 'default' }, env }) as any;
+  await admin.from('user_pins').upsert({ user_id: userId, pin_hash: pinHash }, { onConflict: 'user_id' });
 }
 
-type AuthHandler = (req: Request, user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>) => Promise<Response>;
+type AuthHandler = (req: Request, user: CurrentUser) => Promise<Response>;
 
 export function requireAuth(handler: AuthHandler) {
   return async (req: Request) => {
@@ -201,15 +214,18 @@ export function requireAuth(handler: AuthHandler) {
 }
 
 export function requireRole(roles: string | string[], handler: AuthHandler) {
-  const allowed = Array.isArray(roles) ? roles : [roles];
   return async (req: Request) => {
     const user = await getCurrentUser();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!allowed.includes(user.role)) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const allowed = Array.isArray(roles) ? roles : [roles];
+    if (!allowed.includes(user.role)) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
     return handler(req, user);
   };
 }
 
+// Temporary select object for article card queries — will be migrated to Supabase queries
 export const articleCardSelect = {
   id: true,
   title: true,

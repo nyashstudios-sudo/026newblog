@@ -1,56 +1,52 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
 export const GET = requireAuth(async (req, user) => {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get('q') || '';
 
-  const where: Record<string, unknown> = { userId: user.id };
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  const participations = await db.conversationParticipant.findMany({
-    where,
-    include: {
-      conversation: {
-        include: {
-          participants: {
-            include: {
-              user: {
-                select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true },
-              },
-            },
-          },
-          messages: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-            include: {
-              sender: { select: { id: true, firstName: true, lastName: true } },
-            },
-          },
-        },
-      },
-    },
-    orderBy: { conversation: { updatedAt: 'desc' } },
-  });
+  const sb = ctx.supabaseAdmin as any;
 
-  let conversations = participations.map((p) => {
-    const other = p.conversation.participants.find((part) => part.userId !== user.id);
-    const lastMessage = p.conversation.messages[0] || null;
+  const { data: participations } = await sb
+    .from('conversation_participants')
+    .select(`*,
+      conversation:conversations!conversation_id(*,
+        participants:conversation_participants!conversation_id(
+          user:users(id, first_name, last_name, username, avatar_url)
+        ),
+        last_message:messages!conversation_id(
+          id, content, created_at, is_read, sender_id,
+          sender:users!sender_id(first_name, last_name)
+        )
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('last_read_at', { ascending: false, nullsFirst: false });
+
+  let conversations = (participations || []).map((p: any) => {
+    const conv = p.conversation;
+    const other = conv.participants?.find((part: any) => part.user_id !== user.id);
+    const msgs = conv.last_message || [];
+    const lastMessage = msgs.length > 0 ? msgs[msgs.length - 1] : null;
     return {
-      id: p.conversation.id,
-      updatedAt: p.conversation.updatedAt,
+      id: conv.id,
+      updatedAt: conv.updated_at,
       otherUser: other?.user || null,
       lastMessage,
-      unread: lastMessage ? !lastMessage.isRead && lastMessage.senderId !== user.id : false,
+      unread: lastMessage ? !lastMessage.is_read && lastMessage.sender_id !== user.id : false,
     };
   });
 
   if (search) {
     const q = search.toLowerCase();
-    conversations = conversations.filter((c) => {
+    conversations = conversations.filter((c: any) => {
       if (!c.otherUser) return false;
-      const name = `${c.otherUser.firstName} ${c.otherUser.lastName}`.toLowerCase();
-      const username = c.otherUser.username.toLowerCase();
+      const name = `${c.otherUser.first_name || ''} ${c.otherUser.last_name || ''}`.toLowerCase();
+      const username = (c.otherUser.username || '').toLowerCase();
       return name.includes(q) || username.includes(q);
     });
   }
@@ -65,54 +61,37 @@ export const POST = requireAuth(async (req, user) => {
     return NextResponse.json({ error: 'Invalid recipient' }, { status: 400 });
   }
 
-  const otherUser = await db.user.findUnique({ where: { id: otherUserId, isActive: true } });
-  if (!otherUser) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const sb = ctx.supabaseAdmin as any;
+
+  const { data: otherUser } = await sb.from('users').select('id').eq('id', otherUserId).eq('is_active', true).single();
+  if (!otherUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+  // Check for existing conversation between these two users
+  const { data: existingConv } = await sb
+    .rpc('find_conversation_between', { user_a: user.id, user_b: otherUserId });
+
+  if (existingConv?.[0]) {
+    const { data: parts } = await sb.from('conversation_participants')
+      .select('user:users(id, first_name, last_name, username, avatar_url)')
+      .eq('conversation_id', existingConv[0].id);
+    const other = parts?.find((p: any) => p.user?.id !== user.id);
+    return NextResponse.json({ conversation: { id: existingConv[0].id, otherUser: other?.user } });
   }
 
-  const existing = await db.conversation.findFirst({
-    where: {
-      participants: {
-        every: { userId: { in: [user.id, otherUserId] } },
-      },
-      AND: [
-        { participants: { some: { userId: user.id } } },
-        { participants: { some: { userId: otherUserId } } },
-      ],
-    },
-    include: {
-      participants: {
-        include: {
-          user: {
-            select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true },
-          },
-        },
-      },
-    },
-  });
+  const { data: conv } = await sb.from('conversations').insert({}).select().single();
 
-  if (existing) {
-    const other = existing.participants.find((p) => p.userId !== user.id);
-    return NextResponse.json({ conversation: { id: existing.id, otherUser: other?.user } });
-  }
+  await sb.from('conversation_participants').insert([
+    { conversation_id: conv.id, user_id: user.id },
+    { conversation_id: conv.id, user_id: otherUserId },
+  ]);
 
-  const conversation = await db.conversation.create({
-    data: {
-      participants: {
-        create: [{ userId: user.id }, { userId: otherUserId }],
-      },
-    },
-    include: {
-      participants: {
-        include: {
-          user: {
-            select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true },
-          },
-        },
-      },
-    },
-  });
+  const { data: parts } = await sb.from('conversation_participants')
+    .select('user:users(id, first_name, last_name, username, avatar_url)')
+    .eq('conversation_id', conv.id);
+  const other = parts?.find((p: any) => p.user?.id !== user.id);
 
-  const other = conversation.participants.find((p) => p.userId !== user.id);
-  return NextResponse.json({ conversation: { id: conversation.id, otherUser: other?.user } }, { status: 201 });
+  return NextResponse.json({ conversation: { id: conv.id, otherUser: other?.user } }, { status: 201 });
 });

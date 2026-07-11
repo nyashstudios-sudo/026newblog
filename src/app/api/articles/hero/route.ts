@@ -1,33 +1,29 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { articleCardSelect } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
-function jsonResponse(data: unknown) {
-  return NextResponse.json(JSON.parse(JSON.stringify(data, (_k, v) => (typeof v === 'bigint' ? Number(v) : v))));
-}
+const articleSelect = 'id, title, slug, excerpt, cover_image_url, reading_time_minutes, view_count, like_count, comment_count, share_count, published_at, tags, category:categories!category_id(name, slug), author:users!author_id(id, first_name, last_name, username, avatar_url)';
 
 export async function GET() {
+  const { data: ctx } = await createSupabaseContext({ auth: 'none' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const sb = ctx.supabase as any;
+
   const [featured, topLiked] = await Promise.all([
-    db.article.findMany({
-      where: { status: 'published', isFeatured: true },
-      orderBy: { publishedAt: 'desc' },
-      take: 5,
-      select: articleCardSelect,
-    }),
-    db.article.findMany({
-      where: { status: 'published' },
-      orderBy: { likeCount: 'desc' },
-      take: 5,
-      select: articleCardSelect,
-    }),
+    sb.from('articles').select(articleSelect)
+      .eq('status', 'published').eq('is_featured', true)
+      .order('published_at', { ascending: false }).limit(5),
+    sb.from('articles').select(articleSelect)
+      .eq('status', 'published')
+      .order('like_count', { ascending: false }).limit(5),
   ]);
 
   const seen = new Set<string>();
-  const slides = [...featured, ...topLiked].filter((a) => {
+  const slides = [...(featured.data || []), ...(topLiked.data || [])].filter((a: any) => {
     if (seen.has(a.id)) return false;
     seen.add(a.id);
     return true;
   });
 
-  return jsonResponse({ slides: slides.slice(0, 6) });
+  return NextResponse.json({ slides: slides.slice(0, 6) });
 }

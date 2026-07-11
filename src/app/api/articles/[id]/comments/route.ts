@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 import { moderateContent } from '@/lib/moderation';
 import { emitComment } from '@/lib/socket';
 
@@ -8,23 +8,20 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, context: RouteContext) {
   const { id: articleId } = await context.params;
+  const { data: ctx } = await createSupabaseContext({ auth: 'none' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  const comments = await db.comment.findMany({
-    where: { articleId, parentId: null, moderationStatus: 'approved' },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user: { select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true } },
-      replies: {
-        where: { moderationStatus: 'approved' },
-        orderBy: { createdAt: 'asc' },
-        include: {
-          user: { select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true } },
-        },
-      },
-    },
-  });
+  const sb = ctx.supabase as any;
 
-  return NextResponse.json({ comments });
+  const { data: comments } = await sb
+    .from('comments')
+    .select('*, user:users(id, first_name, last_name, username, avatar_url), replies:comments!parent_id(id, content, created_at, user:users(id, first_name, last_name, username, avatar_url))')
+    .is('parent_id', null)
+    .eq('article_id', articleId)
+    .eq('moderation_status', 'approved')
+    .order('created_at', { ascending: false });
+
+  return NextResponse.json({ comments: comments || [] });
 }
 
 export async function POST(req: Request, context: RouteContext) {
@@ -37,31 +34,29 @@ export async function POST(req: Request, context: RouteContext) {
   const modResult = await moderateContent(body.content);
   const needsReview = modResult.flagged;
 
-  const comment = await db.comment.create({
-    data: {
-      articleId,
-      userId: user.id,
-      parentId: body.parentId || null,
-      content: body.content,
-      moderationStatus: needsReview ? 'pending' : 'approved',
-    },
-    include: {
-      user: { select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true } },
-    },
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  if (!needsReview) {
-    await db.article.update({ where: { id: articleId }, data: { commentCount: { increment: 1 } } });
+  const sb = ctx.supabaseAdmin as any;
+
+  const { data: comment } = await sb.from('comments').insert({
+    article_id: articleId,
+    user_id: user.id,
+    parent_id: body.parentId || null,
+    content: body.content,
+    moderation_status: needsReview ? 'pending' : 'approved',
+  }).select('*, user:users(id, first_name, last_name, username, avatar_url)').single();
+
+  if (!needsReview && comment) {
+    await sb.rpc('increment_comment_count', { article_id: articleId });
     emitComment(articleId, comment);
-  } else {
-    await db.moderationQueue.create({
-      data: {
-        type: 'comment',
-        contentId: comment.id,
-        reason: 'AI auto-flagged',
-        aiConfidence: modResult.confidence,
-        aiCategory: modResult.category,
-      },
+  } else if (needsReview && comment) {
+    await sb.from('moderation_queue').insert({
+      type: 'comment',
+      content_id: comment.id,
+      reason: 'AI auto-flagged',
+      ai_confidence: modResult.confidence,
+      ai_category: modResult.category,
     });
   }
 

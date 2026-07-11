@@ -25,7 +25,6 @@ export default function AdminModerationPage() {
   const [activeTab, setActiveTab] = useState<FilterTab>('pending');
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') return;
     fetch('/api/admin/moderation')
       .then((r) => r.json())
       .then((d) => setItems(d.items || []))
@@ -62,15 +61,7 @@ export default function AdminModerationPage() {
 
   if (loading) return null;
 
-  if (!user || user.role !== 'admin') {
-    return (
-      <div style={{ maxWidth: 480, margin: '0 auto', padding: '96px 24px', textAlign: 'center' }}>
-        <Link href="/"><Button>Back to home</Button></Link>
-      </div>
-    );
-  }
-
-  const initials = `${user.firstName[0]}${user.lastName[0]}`;
+  const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'A';
   const navItems = [
     { href: '/admin', label: 'Overview', icon: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
     { href: '/admin/authors', label: 'Authors', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75' },
@@ -109,7 +100,7 @@ export default function AdminModerationPage() {
             </Link>
           </nav>
         </div>
-        <div className="dash-sidebar-footer">
+        {user && <div className="dash-sidebar-footer">
           <Link href={`/profile/${user.username}`} className="dash-sidebar-profile" style={{ textDecoration: 'none' }}>
             <div className="dash-sidebar-avatar">{initials}</div>
             <div className="dash-sidebar-profile-info">
@@ -117,7 +108,7 @@ export default function AdminModerationPage() {
               <div className="dash-sidebar-profile-role">{user.role}</div>
             </div>
           </Link>
-        </div>
+        </div>}
       </aside>
 
       <main className="dash-main">

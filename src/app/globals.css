@@ -135,12 +135,7 @@ body {
 .animate-stagger > *:nth-child(7) { animation-delay: 0.26s; }
 .animate-stagger > *:nth-child(8) { animation-delay: 0.30s; }
 
-.skeleton {
-  background: linear-gradient(90deg, var(--skeleton) 25%, var(--bg-surface) 50%, var(--skeleton) 75%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s ease-in-out infinite;
-  border-radius: 6px;
-}
+
 
 .hover-lift {
   transition: transform 0.25s var(--ease-out-quart), box-shadow 0.25s var(--ease-out-quart);
@@ -185,18 +180,22 @@ body {
   transform-origin: left;
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.skeleton {
+  background: var(--skeleton);
+  border-radius: 6px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.loading-dots {
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 .animate-fade-in-up { animation: fade-in-up 0.5s var(--ease-out-expo) forwards; }
-
-.skeleton {
-  background: linear-gradient(90deg, var(--skeleton) 25%, var(--bg-elevated) 50%, var(--skeleton) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
 
 .ticker-track { animation: ticker-scroll 45s linear infinite; }
 .ticker-track:hover { animation-play-state: paused; }
@@ -547,6 +546,33 @@ body {
   width: 100%;
   max-width: 400px;
 }
+
+.admin-login-icon {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  background: var(--primary-light);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+}
+.admin-login-icon svg { width: 24px; height: 24px; color: var(--primary); }
+
+.admin-login-link {
+  text-align: center; margin-bottom: 24px;
+}
+.admin-login-link a {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--text-tertiary); text-decoration: none;
+  transition: color 0.2s;
+}
+.admin-login-link a:hover { color: var(--primary); }
+.admin-login-link svg { width: 13px; height: 13px; }
+
+.brand-back-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.85rem; color: oklch(60% 0.008 175); text-decoration: none;
+  transition: color 0.2s;
+}
+.brand-back-link:hover { color: oklch(85% 0.005 175); }
 
 .form-header {
   margin-bottom: 32px;

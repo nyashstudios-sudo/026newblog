@@ -1,35 +1,21 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-function j(data: unknown) {
-  return NextResponse.json(JSON.parse(JSON.stringify(data, (_k: string, v: unknown) => (typeof v === 'bigint' ? Number(v) : v))));
-}
-
 export async function GET(_req: Request, context: RouteContext) {
   const { id } = await context.params;
+  const { data: ctx } = await createSupabaseContext({ auth: 'none' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  const article = await db.article.findFirst({
-    where: { OR: [{ id }, { slug: id }] },
-    include: {
-      category: true,
-      author: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          username: true,
-          avatarUrl: true,
-          bio: true,
-          authorProfile: { select: { totalViews: true, totalFollowers: true } },
-          _count: { select: { articles: { where: { status: 'published' } } } },
-        },
-      },
-      audio: true,
-    },
-  });
+  const sb = ctx.supabase as any;
+
+  const { data: article } = await sb
+    .from('articles')
+    .select('*, category:categories(*), audio:article_audio(*), author:users!author_id(id, first_name, last_name, username, avatar_url, bio, author_profile:author_profiles(total_views, total_followers))')
+    .or(`id.eq.${id},slug.eq.${id}`)
+    .single();
 
   if (!article) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -37,35 +23,32 @@ export async function GET(_req: Request, context: RouteContext) {
 
   if (article.status !== 'published') {
     const user = await getCurrentUser();
-    if (!user || (article.authorId !== user.id && user.role !== 'admin')) {
+    if (!user || (article.author_id !== user.id && user.role !== 'admin')) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
   }
 
-  await db.article.update({
-    where: { id: article.id },
-    data: { viewCount: { increment: 1 } },
+  await sb.from('article_views').insert({
+    article_id: article.id,
+    user_id: (await getCurrentUser())?.id || null,
+    session_id: null,
   });
+
+  await sb.rpc('increment_article_view', { article_id: article.id });
 
   const user = await getCurrentUser();
   let userInteraction = { liked: false, saved: false, following: false };
 
   if (user) {
     const [liked, saved, following] = await Promise.all([
-      db.articleLike.findUnique({
-        where: { userId_articleId: { userId: user.id, articleId: article.id } },
-      }),
-      db.articleSave.findUnique({
-        where: { userId_articleId: { userId: user.id, articleId: article.id } },
-      }),
-      db.follow.findUnique({
-        where: { followerId_followingId: { followerId: user.id, followingId: article.authorId } },
-      }),
+      sb.from('article_likes').select('*').eq('user_id', user.id).eq('article_id', article.id).maybeSingle(),
+      sb.from('article_saves').select('*').eq('user_id', user.id).eq('article_id', article.id).maybeSingle(),
+      sb.from('follows').select('*').eq('follower_id', user.id).eq('following_id', article.author_id).maybeSingle(),
     ]);
     userInteraction = { liked: !!liked, saved: !!saved, following: !!following };
   }
 
-  return j({ article, userInteraction });
+  return NextResponse.json({ article, userInteraction });
 }
 
 export async function PATCH(req: Request, context: RouteContext) {
@@ -73,20 +56,24 @@ export async function PATCH(req: Request, context: RouteContext) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const article = await db.article.findUnique({ where: { id } });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const sb = ctx.supabaseAdmin as any;
+
+  const { data: article } = await sb.from('articles').select('*').eq('id', id).single();
   if (!article) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  if (article.authorId !== user.id && user.role !== 'admin') {
+  if (article.author_id !== user.id && user.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const body = await req.json();
-  const updated = await db.article.update({
-    where: { id },
-    data: {
-      ...body,
-      publishedAt: body.status === 'published' && !article.publishedAt ? new Date() : article.publishedAt,
-    },
-  });
+  const updateData: Record<string, unknown> = { ...body };
+  if (body.status === 'published' && !article.published_at) {
+    updateData.published_at = new Date().toISOString();
+  }
 
-  return j({ article: updated });
+  const { data: updated } = await sb.from('articles').update(updateData).eq('id', id).select().single();
+
+  return NextResponse.json({ article: updated });
 }

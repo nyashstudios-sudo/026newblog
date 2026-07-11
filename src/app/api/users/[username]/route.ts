@@ -1,58 +1,53 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getCurrentUser, articleCardSelect } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
 type RouteContext = { params: Promise<{ username: string }> };
 
-function j(data: unknown) {
-  return NextResponse.json(JSON.parse(JSON.stringify(data, (_k: string, v: unknown) => (typeof v === 'bigint' ? Number(v) : v))));
-}
+const articleSelect = 'id, title, slug, excerpt, cover_image_url, reading_time_minutes, view_count, like_count, comment_count, share_count, published_at, tags, category:categories!category_id(name, slug), author:users!author_id(id, first_name, last_name, username, avatar_url)';
 
 export async function GET(_req: Request, context: RouteContext) {
   const { username } = await context.params;
+  const { data: ctx } = await createSupabaseContext({ auth: 'none' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  const user = await db.user.findUnique({
-    where: { username },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      username: true,
-      avatarUrl: true,
-      bio: true,
-      website: true,
-      role: true,
-      createdAt: true,
-      authorProfile: true,
-      _count: {
-        select: {
-          followers: true,
-          following: true,
-          articles: { where: { status: 'published' } },
-        },
-      },
-    },
-  });
+  const sb = ctx.supabase as any;
+
+  const { data: user } = await sb
+    .from('users')
+    .select('id, first_name, last_name, username, avatar_url, bio, website, role, created_at, author_profile:author_profiles(*)')
+    .eq('username', username)
+    .single();
 
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  // Get follower/following/article counts
+  const [followers, following, articleCount] = await Promise.all([
+    sb.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id),
+    sb.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', user.id),
+    sb.from('articles').select('*', { count: 'exact', head: true }).eq('author_id', user.id).eq('status', 'published'),
+  ]);
 
   const currentUser = await getCurrentUser();
   let isFollowing = false;
   if (currentUser && currentUser.id !== user.id) {
-    const follow = await db.follow.findUnique({
-      where: { followerId_followingId: { followerId: currentUser.id, followingId: user.id } },
-    });
+    const { data: follow } = await sb.from('follows').select('*')
+      .eq('follower_id', currentUser.id).eq('following_id', user.id).maybeSingle();
     isFollowing = !!follow;
   }
 
-  const recentArticles = await db.article.findMany({
-    where: { authorId: user.id, status: 'published' },
-    orderBy: { publishedAt: 'desc' },
-    take: 6,
-    select: articleCardSelect,
-  });
+  const { data: recentArticles } = await sb.from('articles').select(articleSelect)
+    .eq('author_id', user.id).eq('status', 'published')
+    .order('published_at', { ascending: false }).limit(6);
 
-  return j({ profile: user, isFollowing, recentArticles });
+  return NextResponse.json({
+    profile: {
+      ...user,
+      _count: { followers: followers.count || 0, following: following.count || 0, articles: articleCount.count || 0 },
+    },
+    isFollowing,
+    recentArticles: recentArticles || [],
+  });
 }
 
 export async function PATCH(req: Request, context: RouteContext) {
@@ -65,16 +60,21 @@ export async function PATCH(req: Request, context: RouteContext) {
   }
 
   const body = await req.json();
-  const { bio, website } = body;
+  const { bio, website, firstName, lastName } = body;
 
-  const updated = await db.user.update({
-    where: { id: currentUser.id },
-    data: {
-      ...(bio !== undefined && { bio }),
-      ...(website !== undefined && { website }),
-    },
-    select: { id: true, bio: true, website: true, username: true },
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  return j({ profile: updated });
+  const updateData: Record<string, unknown> = {};
+  if (bio !== undefined) updateData.bio = bio;
+  if (website !== undefined) updateData.website = website;
+  if (firstName !== undefined) updateData.first_name = firstName;
+  if (lastName !== undefined) updateData.last_name = lastName;
+
+  const { data: updated } = await (ctx.supabaseAdmin as any)
+    .from('users').update(updateData).eq('id', currentUser.id)
+    .select('id, bio, website, first_name, last_name, username, email')
+    .single();
+
+  return NextResponse.json({ profile: updated });
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { requireAuth } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
 export const GET = requireAuth(async (req, user) => {
   const { searchParams } = new URL(req.url);
@@ -10,20 +10,17 @@ export const GET = requireAuth(async (req, user) => {
     return NextResponse.json({ users: [] });
   }
 
-  const users = await db.user.findMany({
-    where: {
-      isActive: true,
-      id: { not: user.id },
-      OR: [
-        { firstName: { contains: q } },
-        { lastName: { contains: q } },
-        { username: { contains: q } },
-        { email: { contains: q } },
-      ],
-    },
-    select: { id: true, firstName: true, lastName: true, username: true, avatarUrl: true },
-    take: 20,
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'none' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  return NextResponse.json({ users });
+  const sb = ctx.supabase as any;
+  const tsquery = q.split(/\s+/).map((w: string) => w + ':*').join(' & ');
+
+  const { data: users } = await sb.from('users')
+    .select('id, first_name, last_name, username, avatar_url')
+    .neq('id', user.id)
+    .textSearch('username', tsquery, { config: 'english' })
+    .limit(20);
+
+  return NextResponse.json({ users: users || [] });
 });

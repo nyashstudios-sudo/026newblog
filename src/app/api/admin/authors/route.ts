@@ -1,28 +1,27 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
-export const GET = requireRole('admin', async (req) => {
+export const GET = requireRole('admin', async (req, admin) => {
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status') || 'pending';
 
-  const applications = await db.authorApplication.findMany({
-    where: status !== 'all' ? { status: status as 'pending' | 'approved' | 'rejected' | 'suspended' } : undefined,
-    orderBy: { createdAt: 'desc' },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          username: true,
-          avatarUrl: true,
-          role: true,
-        },
-      },
-    },
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const query = (ctx.supabaseAdmin as any)
+    .from('author_applications')
+    .select(`
+      *,
+      user:users(id, email, first_name, last_name, username, avatar_url, role)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (status !== 'all') {
+    query.eq('status', status);
+  }
+
+  const { data: applications } = await query;
 
   return NextResponse.json({ applications });
 });
@@ -34,56 +33,55 @@ export const PATCH = requireRole('admin', async (req, admin) => {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const application = await db.authorApplication.findUnique({
-    where: { id: applicationId },
-    include: { user: true },
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const { data: appData } = await (ctx.supabaseAdmin as any)
+    .from('author_applications')
+    .select('*')
+    .eq('id', applicationId)
+    .single();
+  const application: any = appData;
 
   if (!application) {
     return NextResponse.json({ error: 'Application not found' }, { status: 404 });
   }
 
+  const sb = ctx.supabaseAdmin as any;
+
   if (action === 'approve') {
-    await db.$transaction([
-      db.authorApplication.update({
-        where: { id: applicationId },
-        data: { status: 'approved', reviewedBy: admin.id, reviewedAt: new Date() },
-      }),
-      db.user.update({
-        where: { id: application.userId },
-        data: { role: 'author' },
-      }),
-      db.authorProfile.upsert({
-        where: { userId: application.userId },
-        update: {},
-        create: { userId: application.userId },
-      }),
-      db.notification.create({
-        data: {
-          userId: application.userId,
-          type: 'system',
-          title: 'Author application approved',
-          content: 'Congratulations! You can now publish articles on 026Newsblog.',
-        },
-      }),
-    ]);
-  } else {
-    await db.authorApplication.update({
-      where: { id: applicationId },
-      data: {
-        status: 'rejected',
-        reviewedBy: admin.id,
-        reviewedAt: new Date(),
-        rejectionReason: rejectionReason || 'Application did not meet requirements',
-      },
+    await sb.from('author_applications').update({
+      status: 'approved',
+      reviewed_by: admin.id,
+      reviewed_at: new Date().toISOString(),
+    }).eq('id', applicationId);
+
+    await sb.from('users').update({ role: 'author' }).eq('id', application.user_id);
+
+    await sb.from('author_profiles').upsert(
+      { user_id: application.user_id },
+      { onConflict: 'user_id', ignoreDuplicates: true },
+    );
+
+    await sb.from('notifications').insert({
+      user_id: application.user_id,
+      type: 'system',
+      title: 'Author application approved',
+      content: 'Congratulations! You can now publish articles on 026Newsblog.',
     });
-    await db.notification.create({
-      data: {
-        userId: application.userId,
-        type: 'system',
-        title: 'Author application update',
-        content: rejectionReason || 'Your author application was not approved at this time.',
-      },
+  } else {
+    await sb.from('author_applications').update({
+      status: 'rejected',
+      reviewed_by: admin.id,
+      reviewed_at: new Date().toISOString(),
+      rejection_reason: rejectionReason || 'Application did not meet requirements',
+    }).eq('id', applicationId);
+
+    await sb.from('notifications').insert({
+      user_id: application.user_id,
+      type: 'system',
+      title: 'Author application update',
+      content: rejectionReason || 'Your author application was not approved at this time.',
     });
   }
 

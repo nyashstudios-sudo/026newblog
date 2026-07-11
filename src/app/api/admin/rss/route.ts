@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 import { fetchRssFeed } from '@/lib/rss';
 
 export const GET = requireRole('admin', async () => {
-  const feeds = await db.rssFeed.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      category: { select: { name: true, slug: true } },
-      _count: { select: { items: true } },
-    },
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  return NextResponse.json({ feeds });
+  const { data: feeds } = await (ctx.supabaseAdmin as any)
+    .from('rss_feeds')
+    .select('*, category:categories(name, slug)')
+    .order('created_at', { ascending: false });
+
+  return NextResponse.json({ feeds: feeds || [] });
 });
 
 export const POST = requireRole('admin', async (req) => {
@@ -22,16 +22,21 @@ export const POST = requireRole('admin', async (req) => {
     return NextResponse.json({ error: 'Name and URL required' }, { status: 400 });
   }
 
-  const feed = await db.rssFeed.create({
-    data: {
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const { data: feed } = await (ctx.supabaseAdmin as any)
+    .from('rss_feeds')
+    .insert({
       name,
       url,
-      categoryId: categoryId || null,
-      refreshIntervalMinutes: refreshIntervalMinutes || 60,
-    },
-  });
+      category_id: categoryId || null,
+      refresh_interval_minutes: refreshIntervalMinutes || 60,
+    })
+    .select()
+    .single();
 
-  fetchRssFeed(feed.id).catch(() => {});
+  if (feed) fetchRssFeed(feed.id).catch(() => {});
 
   return NextResponse.json({ feed }, { status: 201 });
 });
@@ -43,15 +48,17 @@ export const PATCH = requireRole('admin', async (req) => {
     return NextResponse.json({ error: 'Feed ID required' }, { status: 400 });
   }
 
-  const feed = await db.rssFeed.update({
-    where: { id: feedId },
-    data: {
-      ...(status && { status }),
-      ...(refreshIntervalMinutes && { refreshIntervalMinutes }),
-    },
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
 
-  if (status === 'active') {
+  const sb = ctx.supabaseAdmin as any;
+  const updateData: Record<string, unknown> = {};
+  if (status) updateData.status = status;
+  if (refreshIntervalMinutes) updateData.refresh_interval_minutes = refreshIntervalMinutes;
+
+  const { data: feed } = await sb.from('rss_feeds').update(updateData).eq('id', feedId).select().single();
+
+  if (status === 'active' && feed) {
     fetchRssFeed(feed.id).catch(() => {});
   }
 

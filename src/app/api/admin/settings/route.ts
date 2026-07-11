@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { requireRole } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
 const DEFAULT_SETTINGS = {
   revenue_share_pct: { author: 70, platform: 30 },
@@ -10,10 +10,16 @@ const DEFAULT_SETTINGS = {
 };
 
 export const GET = requireRole('admin', async () => {
-  const settings = await db.platformSetting.findMany();
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const { data: settings } = await (ctx.supabaseAdmin as any)
+    .from('platform_settings')
+    .select('*');
+
   const result: Record<string, unknown> = { ...DEFAULT_SETTINGS };
 
-  settings.forEach((s) => {
+  (settings || []).forEach((s: any) => {
     result[s.key] = s.value;
   });
 
@@ -27,13 +33,17 @@ export const PATCH = requireRole('admin', async (req, admin) => {
     ['revenue_share_pct', 'withdrawal_threshold_usd', 'site_appearance', 'moderation'].includes(key)
   );
 
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const sb = ctx.supabaseAdmin as any;
+
   await Promise.all(
     updates.map(([key, value]) =>
-      db.platformSetting.upsert({
-        where: { key },
-        update: { value: value as object, updatedBy: admin.id },
-        create: { key, value: value as object, updatedBy: admin.id },
-      })
+      sb.from('platform_settings').upsert(
+        { key, value: value as object, updated_by: admin.id },
+        { onConflict: 'key' },
+      )
     )
   );
 

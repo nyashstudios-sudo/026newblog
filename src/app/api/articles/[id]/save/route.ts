@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -10,11 +10,11 @@ export async function POST(_req: Request, context: RouteContext) {
 
   const { id: articleId } = await context.params;
 
-  await db.articleSave.upsert({
-    where: { userId_articleId: { userId: user.id, articleId } },
-    create: { userId: user.id, articleId },
-    update: {},
-  });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const sb = ctx.supabaseAdmin as any;
+  await sb.from('article_saves').upsert({ user_id: user.id, article_id: articleId }, { onConflict: 'user_id,article_id' });
 
   return NextResponse.json({ saved: true });
 }
@@ -25,7 +25,12 @@ export async function DELETE(_req: Request, context: RouteContext) {
 
   const { id: articleId } = await context.params;
 
-  await db.articleSave.deleteMany({ where: { userId: user.id, articleId } });
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const sb = ctx.supabaseAdmin as any;
+  await sb.from('article_saves').delete()
+    .eq('user_id', user.id).eq('article_id', articleId);
 
   return NextResponse.json({ saved: false });
 }

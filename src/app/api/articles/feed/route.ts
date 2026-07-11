@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { getCurrentUser, articleCardSelect } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
+import { createSupabaseContext } from '@/lib/supabase/context';
 import { cacheGet, cacheSet } from '@/lib/redis';
 
-function jsonResponse(data: unknown) {
-  return NextResponse.json(JSON.parse(JSON.stringify(data, (_k, v) => (typeof v === 'bigint' ? Number(v) : v))));
-}
+const articleSelect = 'id, title, slug, excerpt, cover_image_url, reading_time_minutes, view_count, like_count, comment_count, share_count, published_at, tags, category:categories!category_id(name, slug), author:users!author_id(id, first_name, last_name, username, avatar_url)';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -14,66 +12,67 @@ export async function GET(req: Request) {
   const tab = searchParams.get('tab') || 'recent';
 
   const user = await getCurrentUser();
+  const { data: ctx } = await createSupabaseContext({ auth: 'none' });
+  if (!ctx) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+
+  const sb = ctx.supabase as any;
   let articles;
 
   if (tab === 'foryou' && user) {
-    const [interests, following] = await Promise.all([
-      db.userInterest.findMany({ where: { userId: user.id }, select: { categoryId: true } }),
-      db.follow.findMany({ where: { followerId: user.id }, select: { followingId: true } }),
-    ]);
+    const { data: ctx2 } = await createSupabaseContext({ auth: 'secret' });
+    if (!ctx2) return NextResponse.json({ error: 'Server error' }, { status: 500 });
+    const admin = ctx2.supabaseAdmin as any;
 
-    const categoryIds = interests.map((i: { categoryId: string }) => i.categoryId);
-    const authorIds = following.map((f: { followingId: string }) => f.followingId);
+    const { data: interests } = await admin.from('user_interests').select('category_id').eq('user_id', user.id);
+    const { data: following } = await admin.from('follows').select('following_id').eq('follower_id', user.id);
 
-    articles = await db.article.findMany({
-      where: {
-        status: 'published',
-        OR: [
-          ...(categoryIds.length ? [{ categoryId: { in: categoryIds } }] : []),
-          ...(authorIds.length ? [{ authorId: { in: authorIds } }] : []),
-        ],
-      },
-      orderBy: { publishedAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-      select: articleCardSelect,
-    });
+    const categoryIds = (interests || []).map((i: any) => i.category_id);
+    const authorIds = (following || []).map((f: any) => f.following_id);
 
-    if (articles.length === 0) {
-      articles = await db.article.findMany({
-        where: { status: 'published' },
-        orderBy: { publishedAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
-        select: articleCardSelect,
-      });
+    let query = sb.from('articles').select(articleSelect)
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+
+    if (categoryIds.length || authorIds.length) {
+      const ors: string[] = [];
+      if (categoryIds.length) ors.push(`category_id.in.(${categoryIds.join(',')})`);
+      if (authorIds.length) ors.push(`author_id.in.(${authorIds.join(',')})`);
+      query = query.or(ors.join(','));
+    }
+
+    const { data: data1 } = await query;
+    articles = data1;
+
+    if (!articles || articles.length === 0) {
+      const { data: data2 } = await sb.from('articles').select(articleSelect)
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .range((page - 1) * limit, page * limit - 1);
+      articles = data2;
     }
   } else if (tab === 'popular') {
     const cacheKey = `feed:popular:page${page}`;
     const cached = await cacheGet<{ articles: unknown[] }>(cacheKey);
-    if (cached) return jsonResponse({ ...cached, page, hasMore: cached.articles.length === limit });
+    if (cached) return NextResponse.json({ ...cached, page, hasMore: cached.articles.length === limit });
 
-    articles = await db.article.findMany({
-      where: {
-        status: 'published',
-        publishedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-      },
-      orderBy: [{ likeCount: 'desc' }, { viewCount: 'desc' }],
-      skip: (page - 1) * limit,
-      take: limit,
-      select: articleCardSelect,
-    });
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: data2 } = await sb.from('articles').select(articleSelect)
+      .eq('status', 'published')
+      .gte('published_at', weekAgo)
+      .order('like_count', { ascending: false })
+      .order('view_count', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+    articles = data2;
 
     await cacheSet(cacheKey, { articles }, 300);
   } else {
-    articles = await db.article.findMany({
-      where: { status: 'published' },
-      orderBy: { publishedAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-      select: articleCardSelect,
-    });
+    const { data: data2 } = await sb.from('articles').select(articleSelect)
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+    articles = data2;
   }
 
-  return jsonResponse({ articles, page, hasMore: articles.length === limit });
+  return NextResponse.json({ articles: articles || [], page, hasMore: (articles?.length || 0) === limit });
 }

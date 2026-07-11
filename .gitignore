@@ -42,6 +42,14 @@ yarn-error.log*
 # local
 cookies.txt
 
+# debug output
+dev-output.txt
+
+# agent metadata
+.agents/
+skills-lock.json
+
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
