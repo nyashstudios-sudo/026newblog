@@ -342,6 +342,7 @@ body {
 /* Sidebar - mockup style */
 .main-layout {
   max-width: 1400px; margin: 0 auto; padding: 48px 24px;
+  padding-top: calc(4rem + 36px + 48px);
   display: grid; grid-template-columns: 1fr 340px; gap: 48px;
 }
 .sidebar { display: flex; flex-direction: column; gap: 32px; }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 
 interface RssItem {
@@ -17,15 +17,20 @@ export function RssFeedWidget() {
   const [items, setItems] = useState<RssItem[]>([]);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/rss/feed?limit=5')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.items?.length) setItems(d.items);
-        else setError(true);
-      })
-      .catch(() => setError(true));
+  const fetchItems = useCallback(async () => {
+    try {
+      const res = await fetch('/api/rss/feed?limit=5');
+      const d = await res.json();
+      if (d.items?.length) { setItems(d.items); setError(false); }
+      else setError(true);
+    } catch { setError(true); }
   }, []);
+
+  useEffect(() => {
+    fetchItems();
+    const interval = setInterval(fetchItems, 60000);
+    return () => clearInterval(interval);
+  }, [fetchItems]);
 
   if (error || items.length === 0) return null;
 
