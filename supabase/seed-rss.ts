@@ -1,7 +1,7 @@
 import 'dotenv/config';
+import { createClient } from '@supabase/supabase-js';
 
-const PROJECT_REF = 'glmrranchflzuxvjthli';
-const MGMT_API = `https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`;
+const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
 
 const CATEGORIES = [
   { name: 'Technology', slug: 'technology', description: 'Latest tech news, AI, gadgets, and innovation', icon: 'cpu' },
@@ -84,48 +84,46 @@ const FEEDS: { name: string; url: string; categorySlug: string; refreshMinutes: 
   { name: 'BBC Sport', url: 'https://feeds.bbci.co.uk/sport/rss.xml', categorySlug: 'sports', refreshMinutes: 120 },
 ];
 
-async function sql(query: string, token: string) {
-  const res = await fetch(MGMT_API, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
-  });
-  const text = await res.text();
-  if (!res.ok) console.error(`SQL error: ${text.slice(0, 300)}`);
-  return text;
-}
-
 async function main() {
-  const token = process.env.SUPABASE_ACCESS_TOKEN;
-  if (!token) { console.error('❌ SUPABASE_ACCESS_TOKEN not set'); process.exit(1); }
+  console.log('🌱 Seeding RSS categories and feeds...\n');
 
   // 1. Create categories
   for (const cat of CATEGORIES) {
-    const r = await sql(
-      `insert into public.categories (name, slug, description, icon) values ('${cat.name}', '${cat.slug}', '${cat.description.replace(/'/g, "''")}', '${cat.icon}') on conflict (slug) do nothing returning id;`,
-      token,
-    );
-    if (r.includes('"id"')) console.log(`✅ Category '${cat.name}' created`);
-    else console.log(`ℹ️  Category '${cat.name}' already exists`);
+    const { data, error } = await sb
+      .from('categories')
+      .upsert({ name: cat.name, slug: cat.slug, description: cat.description, icon: cat.icon }, { onConflict: 'slug' })
+      .select('id');
+    
+    if (error) console.error(`❌ Category '${cat.name}':`, error.message);
+    else console.log(`✅ Category '${cat.name}' ${data?.[0] ? 'created/updated' : 'exists'}`);
   }
 
   // 2. Get all category IDs
-  const catResult = await sql(`select json_agg(json_build_object('slug', slug, 'id', id)) from public.categories where slug in ('technology','science','business','world','health','education','self-improvement','culture','sports')`, token);
-  const categories = JSON.parse(catResult.match(/\[.*\]/s)?.[0] || '[]');
-  const catMap = Object.fromEntries(categories.map((c: any) => [c.slug, c.id]));
+  const { data: cats } = await sb.from('categories').select('slug, id').in('slug', CATEGORIES.map(c => c.slug));
+  const catMap = Object.fromEntries((cats || []).map(c => [c.slug, c.id]));
+  console.log('\n📋 Category map:', catMap);
 
   // 3. Insert feeds
   for (const feed of FEEDS) {
     const catId = catMap[feed.categorySlug];
-    if (!catId) { console.log(`⚠️  No category for ${feed.name}`); continue; }
+    if (!catId) { console.log(`⚠️  No category for ${feed.name} (slug: ${feed.categorySlug})`); continue; }
     
-    const r = await sql(
-      `insert into public.rss_feeds (name, url, category_id, refresh_minutes, status) values ('${feed.name.replace(/'/g, "''")}', '${feed.url}', '${catId}', ${feed.refreshMinutes}, 'active') on conflict (url) do nothing returning id;`,
-      token,
-    );
-    if (r.includes('"id"')) console.log(`✅ Feed '${feed.name}' added`);
-    else console.log(`ℹ️  Feed '${feed.name}' already exists`);
+    const { data, error } = await sb
+      .from('rss_feeds')
+      .upsert({ 
+        name: feed.name, 
+        url: feed.url, 
+        category_id: catId, 
+        refresh_minutes: feed.refreshMinutes, 
+        status: 'active' 
+      }, { onConflict: 'url' })
+      .select('id');
+    
+    if (error) console.log(`⚠️  Feed '${feed.name}': ${error.message}`);
+    else console.log(`✅ Feed '${feed.name}' ${data?.[0] ? 'added' : 'exists'}`);
   }
+
+  console.log('\n✅ Done!');
 }
 
 main().catch(console.error);
