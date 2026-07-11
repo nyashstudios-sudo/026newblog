@@ -1,42 +1,85 @@
-'use client';
+import { Suspense } from 'react';
+import Link from 'next/link';
+import { HeroSlideshow } from '@/components/articles/hero-slideshow';
+import { ArticleCard } from '@/components/articles/article-card';
+import { RssFeedWidget } from '@/components/rss/rss-feed-widget';
 
-import dynamic from 'next/dynamic';
+interface ArticleData {
+  id: string; title: string; slug: string; likeCount?: number; viewCount?: number;
+  coverImage?: string | null; excerpt?: string; category?: { name: string; slug: string } | null;
+  author?: { firstName: string; lastName: string; username: string } | null;
+  sourceName?: string | null; sourceUrl?: string | null; createdAt: string;
+}
 
-const HomeClient = dynamic(() => import('./home-client'), {
-  ssr: false,
-  loading: () => (
+async function getData() {
+  try {
+    const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const [feedRes, catRes] = await Promise.all([
+      fetch(`${base}/api/articles/feed?page=1&tab=recent&limit=12`, { cache: 'no-store' }),
+      fetch(`${base}/api/categories`, { cache: 'no-store' }),
+    ]);
+    const feed = feedRes.ok ? await feedRes.json() : { articles: [], hasMore: false };
+    const cats = catRes.ok ? await catRes.json() : { categories: [] };
+    return { articles: feed.articles || [], hasMore: feed.hasMore, categories: cats.categories || [] };
+  } catch {
+    return { articles: [], hasMore: false, categories: [] };
+  }
+}
+
+export default async function HomePage() {
+  const data = await getData();
+
+  return (
     <div>
-      <div className="hero"><div className="skeleton w-full h-full rounded-[20px]" /></div>
+      <Suspense fallback={<div className="hero"><div className="skeleton w-full h-full rounded-[20px]" /></div>}>
+        <HeroSlideshow />
+      </Suspense>
+
       <div className="main-layout">
         <main>
-          <div className="feed-header"><h2 className="feed-title">Latest Stories</h2></div>
-          <div className="article-feed" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="article-card">
-                <div className="article-card-body">
-                  <div style={{ height: 14, width: 80, background: 'var(--border-subtle)', borderRadius: 4, marginBottom: 12 }} />
-                  <div style={{ height: 24, width: '70%', background: 'var(--border-subtle)', borderRadius: 6, marginBottom: 8 }} />
-                  <div style={{ height: 24, width: '50%', background: 'var(--border-subtle)', borderRadius: 6, marginBottom: 12 }} />
-                  <div style={{ height: 12, width: '90%', background: 'var(--border-subtle)', borderRadius: 4, marginBottom: 4 }} />
-                  <div style={{ height: 12, width: '60%', background: 'var(--border-subtle)', borderRadius: 4 }} />
-                </div>
-                <div className="article-card-image">
-                  <div style={{ width: '100%', height: '100%', background: 'var(--category-bg)' }} />
-                </div>
-              </div>
+          <div className="feed-header">
+            <h2 className="feed-title">Latest Stories</h2>
+          </div>
+
+          <div className="article-feed">
+            {data.articles.map((article: ArticleData, i: number) => (
+              <ArticleCard key={article.id} article={article as any} index={i} />
             ))}
+            {data.articles.length === 0 && (
+              <p className="text-center text-[var(--text-secondary)] py-12">No articles yet. Check back soon!</p>
+            )}
           </div>
         </main>
+
         <aside className="sidebar">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="sidebar-section" style={{ height: 200, background: 'var(--border-subtle)' }} />
-          ))}
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">Trending Now</h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Trending data loads on client.</p>
+          </div>
+
+          <Suspense fallback={null}>
+            <RssFeedWidget />
+          </Suspense>
+
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">Categories</h3>
+            <div className="categories-grid">
+              {data.categories.map((cat: { name: string; slug: string }) => (
+                <Link key={cat.slug} href={`/?category=${cat.slug}`} className="category-tag">{cat.name}</Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="sidebar-section newsletter-section">
+            <h3 className="sidebar-title">Daily Digest</h3>
+            <p className="newsletter-desc">Get the top 5 stories delivered to your inbox every morning.</p>
+            <div className="newsletter-input-wrap">
+              <input type="email" className="newsletter-input" placeholder="your@email.com" />
+              <button className="newsletter-btn">Subscribe</button>
+            </div>
+          </div>
         </aside>
       </div>
     </div>
-  ),
-});
-
-export default function HomePage() {
-  return <HomeClient />;
+  );
 }
