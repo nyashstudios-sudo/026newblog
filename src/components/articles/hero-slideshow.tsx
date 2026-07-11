@@ -9,10 +9,21 @@ interface Slide {
   title: string;
   slug: string;
   coverImageUrl?: string | null;
+  cover_image_url?: string | null;
   readingTimeMinutes?: number | null;
+  reading_time_minutes?: number | null;
   likeCount?: number;
+  like_count?: number;
   category?: { name: string; slug: string } | null;
-  author: { id: string; firstName: string; lastName: string; username: string; avatarUrl?: string | null };
+  author: { 
+    id: string; 
+    firstName?: string; 
+    lastName?: string; 
+    first_name?: string; 
+    last_name?: string;
+    username: string; 
+    avatarUrl?: string | null;
+  };
 }
 
 export function HeroSlideshow() {
@@ -52,15 +63,15 @@ export function HeroSlideshow() {
   }
 
   const slide = slides[current];
-  const initials = `${slide.author.firstName[0]}${slide.author.lastName[0]}`;
+  const initials = `${slide.author?.firstName?.[0] || slide.author?.first_name?.[0] || ''}${slide.author?.lastName?.[0] || slide.author?.last_name?.[0] || ''}`;
 
   return (
     <div className="hero">
       <div className="hero-slides">
         {slides.map((s, i) => (
           <div key={s.id} className={`hero-slide${i === current ? ' active' : ''}`}>
-            {s.coverImageUrl ? (
-              <img src={s.coverImageUrl} alt={s.title} />
+            {s.coverImageUrl || s.cover_image_url ? (
+              <img src={s.coverImageUrl || s.cover_image_url || ''} alt={s.title} />
             ) : (
               <div className="w-full h-full bg-[var(--primary)]" />
             )}
@@ -80,13 +91,13 @@ export function HeroSlideshow() {
         </Link>
         <div className="hero-meta">
           <div className="hero-author">
-            <div className="hero-author-avatar" style={{ background: `oklch(55% 0.14 ${(current * 60) % 360})` }}>
+            <div className="hero-author-avatar" style={{ background: `oklch(55% 0.14 ${((slide.author?.firstName || slide.author?.first_name || '').charCodeAt(0) || 0) * 60 % 360})` }}>
               {initials}
             </div>
-            <span>{slide.author.firstName} {slide.author.lastName}</span>
+            <span>{slide.author?.firstName || slide.author?.first_name || ''} {slide.author?.lastName || slide.author?.last_name || ''}</span>
           </div>
-          {slide.readingTimeMinutes && <span>{slide.readingTimeMinutes} min read</span>}
-          {slide.likeCount !== undefined && <span>{formatNumber(slide.likeCount)} likes</span>}
+          {(slide.readingTimeMinutes || slide.reading_time_minutes) && <span>{slide.readingTimeMinutes || slide.reading_time_minutes} min read</span>}
+          {(slide.likeCount ?? slide.like_count ?? 0) > 0 && <span>{formatNumber(slide.likeCount ?? slide.like_count ?? 0)} likes</span>}
         </div>
       </div>
 
