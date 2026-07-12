@@ -38,7 +38,7 @@ export function Navbar() {
     { href: '/category/business', label: 'Business' },
     { href: '/category/culture', label: 'Culture' },
     { href: '/category/opinion', label: 'Opinion' },
-    { href: '/listen', label: 'Podcasts' },
+    { href: '/podcasts', label: 'Listen' },
   ];
 
   return (
