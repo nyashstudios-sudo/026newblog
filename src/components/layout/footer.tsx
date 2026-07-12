@@ -17,20 +17,24 @@ export function Footer() {
           <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
             <li><Link href="/explore" className="hover:text-[var(--primary)]">Explore</Link></li>
             <li><Link href="/categories" className="hover:text-[var(--primary)]">Categories</Link></li>
+            <li><Link href="/podcasts" className="hover:text-[var(--primary)]">Listen</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold text-sm mb-3">Creators</h4>
+          <h4 className="font-semibold text-sm mb-3">Company</h4>
           <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
+            <li><Link href="/about" className="hover:text-[var(--primary)]">About Us</Link></li>
+            <li><Link href="/journalists" className="hover:text-[var(--primary)]">Journalists</Link></li>
+            <li><Link href="/contact" className="hover:text-[var(--primary)]">Contact</Link></li>
             <li><Link href="/author/apply" className="hover:text-[var(--primary)]">Become an Author</Link></li>
-            <li><Link href="/author/dashboard" className="hover:text-[var(--primary)]">Author Dashboard</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold text-sm mb-3">Account</h4>
+          <h4 className="font-semibold text-sm mb-3">Legal</h4>
           <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
-            <li><Link href="/auth/login" className="hover:text-[var(--primary)]">Sign in</Link></li>
-            <li><Link href="/auth/register" className="hover:text-[var(--primary)]">Create account</Link></li>
+            <li><Link href="/legal?tab=privacy" className="hover:text-[var(--primary)]">Privacy Policy</Link></li>
+            <li><Link href="/legal?tab=terms" className="hover:text-[var(--primary)]">Terms of Service</Link></li>
+            <li><Link href="/legal?tab=cookies" className="hover:text-[var(--primary)]">Cookie Policy</Link></li>
           </ul>
         </div>
       </div>

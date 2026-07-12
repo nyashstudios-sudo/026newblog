@@ -9,14 +9,15 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(() => {
-      router.push('/');
+    supabase.auth.getSession().then(({ data }) => {
+      const email = data.session?.user?.email || '';
+      router.push(`/auth/verify?verified=true&email=${encodeURIComponent(email)}`);
     });
   }, [router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p className="text-muted-foreground">Verifying your email...</p>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: 'var(--text-secondary)' }}>Verifying your email...</p>
     </div>
   );
 }
