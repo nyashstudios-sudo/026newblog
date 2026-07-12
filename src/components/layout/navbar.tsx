@@ -32,9 +32,9 @@ export function Navbar() {
     ...(user?.role === 'admin' ? [{ href: '/admin', label: 'Admin' }] : []),
   ];
 
-  const primaryLinks = [
+const primaryLinks = [
     { href: '/', label: 'Home' },
-    { href: '/technology', label: 'Technology' },
+    { href: '/category/technology', label: 'Technology' },
     { href: '/category/business', label: 'Business' },
     { href: '/category/culture', label: 'Culture' },
     { href: '/category/opinion', label: 'Opinion' },
