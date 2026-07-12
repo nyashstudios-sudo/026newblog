@@ -17,6 +17,10 @@ export function Footer() {
           <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
             <li><Link href="/explore" className="hover:text-[var(--primary)]">Explore</Link></li>
             <li><Link href="/categories" className="hover:text-[var(--primary)]">Categories</Link></li>
+            <li><Link href="/category/technology" className="hover:text-[var(--primary)]">Technology</Link></li>
+            <li><Link href="/category/business" className="hover:text-[var(--primary)]">Business</Link></li>
+            <li><Link href="/category/culture" className="hover:text-[var(--primary)]">Culture</Link></li>
+            <li><Link href="/category/opinion" className="hover:text-[var(--primary)]">Opinion</Link></li>
             <li><Link href="/podcasts" className="hover:text-[var(--primary)]">Listen</Link></li>
           </ul>
         </div>
@@ -24,7 +28,7 @@ export function Footer() {
           <h4 className="font-semibold text-sm mb-3">Company</h4>
           <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
             <li><Link href="/about" className="hover:text-[var(--primary)]">About Us</Link></li>
-            <li><Link href="/journalists" className="hover:text-[var(--primary)]">Journalists</Link></li>
+            <li><Link href="/author" className="hover:text-[var(--primary)]">Authors</Link></li>
             <li><Link href="/contact" className="hover:text-[var(--primary)]">Contact</Link></li>
             <li><Link href="/author/apply" className="hover:text-[var(--primary)]">Become an Author</Link></li>
           </ul>
