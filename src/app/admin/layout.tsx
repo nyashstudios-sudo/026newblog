@@ -37,6 +37,7 @@ const sidebarSections: { label: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/security', label: 'Security', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
       { href: '/admin/settings', label: 'Settings', icon: 'M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z' },
+      { href: '/admin/contact', label: 'Contact Messages', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', badge: 0 },
     ],
   },
 ];

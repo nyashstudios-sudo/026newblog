@@ -82,7 +82,7 @@ export default function CategoriesPage() {
       </div>
 
       {/* Subtopics bar */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px 32px', display: 'flex', gap: 8, overflowX: 'auto' }}>
+      <div className="cat-subtopics" style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px 32px', display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {['All', ...categories.map(c => c.name)].map(topic => (
           <button key={topic}
             onClick={() => setActiveSubtopic(topic)}
@@ -99,7 +99,7 @@ export default function CategoriesPage() {
       </div>
 
       {/* Content grid */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px 64px', display: 'grid', gridTemplateColumns: '1fr 340px', gap: 40 }}>
+      <div className="cat-grid">
         <main>
           {/* Featured card */}
           {featured && (
@@ -113,8 +113,7 @@ export default function CategoriesPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'transform 0.5s var(--ease-out-expo)',
                 }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.03)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
+                  className="group-hover:scale-105"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke={`oklch(45% 0.12 ${catColors[featured.slug] || '180'})`} strokeWidth="1.5" style={{ width: 80, height: 80, opacity: 0.3 }}>
                     <path d={categoryIcons[featured.slug] || categoryIcons.technology} />
@@ -177,22 +176,7 @@ export default function CategoriesPage() {
               const stroke = `oklch(45% 0.12 ${hue})`;
               return (
                 <Link key={c.id} href={`/?category=${c.slug}`}
-                  style={{
-                    display: 'grid', gridTemplateColumns: '1fr 160px', gap: 18, padding: 18,
-                    background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                    borderRadius: 14, textDecoration: 'none', color: 'inherit',
-                    transition: 'all 0.25s var(--ease-out-expo)',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = 'var(--border)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 4px 16px oklch(0% 0 0 / 0.04)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = '';
-                    e.currentTarget.style.transform = '';
-                    e.currentTarget.style.boxShadow = '';
-                  }}
+                  className="cat-card"
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>

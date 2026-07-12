@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 const faqItems = [
   { q: 'How do I become an author on 026Newsblog?', a: 'Submit an application through our Author Application page. You\'ll need to provide writing samples, a brief bio, and your area of expertise. Our editorial team reviews applications within 48 hours.' },
@@ -27,6 +29,86 @@ const adOptions = [
 export default function ContactPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submittedId, setSubmittedId] = useState<string | null>(null);
+  const [messageStatus, setMessageStatus] = useState<string>('unread');
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    subject: '',
+    message: '',
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email address';
+    if (!formData.subject.trim()) newErrors.subject = 'Subject is required';
+    if (!formData.message.trim()) newErrors.message = 'Message is required';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit');
+      }
+
+      setSubmittedId(data.id);
+      setSubmitted(true);
+      setFormData({ firstName: '', lastName: '', email: '', subject: '', message: '' });
+    } catch (err) {
+      console.error('Contact form error:', err);
+      alert('Failed to send message. Please try again or email us directly.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    if (errors[e.target.name]) {
+      setErrors(prev => ({ ...prev, [e.target.name]: '' }));
+    }
+  };
+
+  // Subscribe to realtime status updates after submission
+  useEffect(() => {
+    if (!submittedId || !submitted) return;
+
+    const channel = createClient()
+      .channel(`contact:${submittedId}`)
+      .on('broadcast', { event: 'status_update' }, (payload) => {
+        const update = payload.payload as { status: string; admin_notes: string | null; replied_at: string | null };
+        setMessageStatus(update.status);
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      channel.unsubscribe();
+      channelRef.current = null;
+    };
+  }, [submittedId, submitted]);
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '56px 24px 80px' }}>
@@ -90,50 +172,114 @@ export default function ContactPage() {
             <div style={{ textAlign: 'center', padding: '40px 20px' }}>
               <div style={{ fontSize: '3rem', marginBottom: 16 }}>✓</div>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>Message sent!</h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 20 }}>
                 Thanks for reaching out. We&apos;ll get back to you within 24 hours.
               </p>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px',
+                background: 'var(--bg-inset)', borderRadius: 10, border: '1px solid var(--border-subtle)',
+                fontSize: '0.82rem', color: 'var(--text-secondary)',
+              }}>
+                <span style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: messageStatus === 'replied' ? 'oklch(65% 0.15 140)' :
+                    messageStatus === 'read' ? 'oklch(65% 0.12 220)' : 'var(--text-tertiary)',
+                  animation: messageStatus === 'unread' ? 'pulse 2s ease-in-out infinite' : 'none',
+                }} />
+                Status: <strong style={{ color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                  {messageStatus === 'unread' ? 'Awaiting review' : messageStatus}
+                </strong>
+              </div>
+              {messageStatus === 'replied' && (
+                <p style={{ fontSize: '0.78rem', color: 'oklch(55% 0.15 140)', marginTop: 12, fontWeight: 600 }}>
+                  Our team has replied to your message. Check your email.
+                </p>
+              )}
             </div>
           ) : (
-            <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}>
+            <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
-                <InputGroup label="First Name" placeholder="Wayne" />
-                <InputGroup label="Last Name" placeholder="Nyamu" />
+                <InputGroup
+                  label="First Name"
+                  placeholder="Wayne"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  error={errors.firstName}
+                />
+                <InputGroup
+                  label="Last Name"
+                  placeholder="Nyamu"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  error={errors.lastName}
+                />
               </div>
               <div style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Email</div>
-                <input type="email" placeholder="you@example.com" className="contact-input" required />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={`contact-input${errors.email ? ' error' : ''}`}
+                  required
+                />
+                {errors.email && <div style={{ fontSize: '0.7rem', color: 'var(--error)', marginTop: 4 }}>{errors.email}</div>}
               </div>
               <div style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Subject</div>
-                <select className="contact-input" style={{
-                  appearance: 'none', cursor: 'pointer',
-                  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",
-                  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
-                }}>
-                  <option>General Inquiry</option>
-                  <option>Advertising & Partnerships</option>
-                  <option>Author Application</option>
-                  <option>Technical Support</option>
-                  <option>Bug Report</option>
-                  <option>Press & Media</option>
-                  <option>Legal</option>
+                <select
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleChange}
+                  className={`contact-input${errors.subject ? ' error' : ''}`}
+                  style={{
+                    appearance: 'none', cursor: 'pointer',
+                    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",
+                    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
+                  }}
+                >
+                  <option value="">Select a subject</option>
+                  <option value="General Inquiry">General Inquiry</option>
+                  <option value="Advertising & Partnerships">Advertising & Partnerships</option>
+                  <option value="Author Application">Author Application</option>
+                  <option value="Technical Support">Technical Support</option>
+                  <option value="Bug Report">Bug Report</option>
+                  <option value="Press & Media">Press & Media</option>
+                  <option value="Legal">Legal</option>
                 </select>
+                {errors.subject && <div style={{ fontSize: '0.7rem', color: 'var(--error)', marginTop: 4 }}>{errors.subject}</div>}
               </div>
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Message</div>
-                <textarea placeholder="Tell us how we can help..." rows={5} className="contact-input" style={{ resize: 'vertical', minHeight: 120, lineHeight: 1.6 }} required />
+                <textarea
+                  name="message"
+                  placeholder="Tell us how we can help..."
+                  rows={5}
+                  value={formData.message}
+                  onChange={handleChange}
+                  className={`contact-input${errors.message ? ' error' : ''}`}
+                  style={{ resize: 'vertical', minHeight: 120, lineHeight: 1.6 }}
+                  required
+                />
+                {errors.message && <div style={{ fontSize: '0.7rem', color: 'var(--error)', marginTop: 4 }}>{errors.message}</div>}
               </div>
-              <button type="submit" style={{
-                padding: '13px 24px', borderRadius: 9, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
-                fontFamily: 'inherit', background: 'var(--primary)', color: 'oklch(98% 0.005 175)', border: 'none',
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                transition: 'opacity 0.2s, transform 0.2s',
-              }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.9'; (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.02)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = ''; (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  padding: '13px 24px', borderRadius: 9, fontSize: '0.85rem', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', background: 'var(--primary)', color: 'oklch(98% 0.005 175)', border: 'none',
+                  width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'opacity 0.2s, transform 0.2s', opacity: submitting ? 0.7 : 1,
+                }}
+                onMouseEnter={e => { if (!submitting) { (e.currentTarget as HTMLButtonElement).style.opacity = '0.9'; (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.02)'; }}}
+                onMouseLeave={e => { if (!submitting) { (e.currentTarget as HTMLButtonElement).style.opacity = ''; (e.currentTarget as HTMLButtonElement).style.transform = ''; }}}
               >
-                Send Message
+                {submitting ? 'Sending...' : 'Send Message'}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
               </button>
             </form>
@@ -208,11 +354,19 @@ export default function ContactPage() {
   );
 }
 
-function InputGroup({ label, placeholder }: { label: string; placeholder: string }) {
+function InputGroup({ label, placeholder, name, value, onChange, error }: { label: string; placeholder: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string }) {
   return (
     <div>
       <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</div>
-      <input placeholder={placeholder} className="contact-input" required />
+      <input
+        placeholder={placeholder}
+        name={name}
+        value={value}
+        onChange={onChange}
+        className={`contact-input${error ? ' error' : ''}`}
+        required
+      />
+      {error && <div style={{ fontSize: '0.7rem', color: 'var(--error)', marginTop: 4 }}>{error}</div>}
     </div>
   );
 }

@@ -45,10 +45,10 @@ export function BreakingNewsTicker() {
 
   return (
     <div className="bg-[var(--ticker-bg)] text-[var(--ticker-text)] py-2 overflow-hidden relative z-[100]">
-      <div className="absolute left-0 top-0 bottom-0 flex items-center px-4 bg-[var(--accent)] text-[oklch(15%_0.02_55)] font-semibold text-xs tracking-wider uppercase z-[2]">
+      <div className="ticker-label">
         Breaking
       </div>
-      <div className="flex ticker-track pl-[140px]">
+      <div className="ticker-track">
         {doubled.map((item, i) => (
           <span key={`${item.id}-${i}`} className="whitespace-nowrap px-8 text-sm flex items-center gap-2">
             <span className="w-[5px] h-[5px] bg-[var(--accent)] rounded-full shrink-0" />

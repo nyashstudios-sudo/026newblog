@@ -3,8 +3,8 @@ import Link from 'next/link';
 export function Footer() {
   return (
     <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] mt-auto">
-      <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
-        <div className="col-span-2 md:col-span-1">
+      <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+        <div>
           <p className="text-lg font-bold">
             026<span className="text-[var(--primary)]">Newsblog</span>
           </p>

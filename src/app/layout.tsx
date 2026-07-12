@@ -64,6 +64,12 @@ export async function generateMetadata(): Promise<Metadata> {
       description: desc,
       images: ['/og-image.png'],
     },
+    manifest: '/manifest.json',
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: title,
+    },
     robots: {
       index: true, follow: true,
       googleBot: { index: true, follow: true, 'max-snippet': -1, 'max-image-preview': 'large', 'max-video-preview': -1 },
