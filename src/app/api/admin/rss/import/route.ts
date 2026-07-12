@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth';
 import { createSupabaseContext } from '@/lib/supabase/context';
+import { getBestArticleImage } from '@/lib/images';
 
 export const POST = requireRole('admin', async () => {
   const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
@@ -34,11 +35,8 @@ export const POST = requireRole('admin', async () => {
   for (const item of items) {
     if (existingUrls.has(item.url)) continue;
 
-    let coverImageUrl = null;
-    if (item.description) {
-      const imgMatch = item.description.match(/<img[^>]+src=["']([^"']+)["']/i);
-      if (imgMatch) coverImageUrl = imgMatch[1];
-    }
+    // Extract best image from RSS item or fetch from source URL
+    let coverImageUrl = await getBestArticleImage(item.url, item);
 
     const title = (item.title || 'Untitled').slice(0, 255);
     const contentText = item.description || item.title || '';
