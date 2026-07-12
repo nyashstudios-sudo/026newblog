@@ -11,113 +11,265 @@ const faqItems = [
   { q: 'How do I report inappropriate content?', a: 'Use the report button on any comment or article, or email moderation@026newsblog.com. Our AI moderation system also auto-flags potentially harmful content for human review.' },
 ];
 
+const contactCards = [
+  { emoji: '📧', title: 'General Inquiries', desc: 'Questions about the platform, feedback, or suggestions', email: 'hello@026newsblog.com' },
+  { emoji: '📢', title: 'Advertising', desc: 'Sponsored content, display ads, and brand partnerships', email: 'ads@026newsblog.com' },
+  { emoji: '🎤', title: 'Press & Media', desc: 'Interview requests, press releases, media kits', email: 'press@026newsblog.com' },
+];
+
+const adOptions = [
+  { emoji: '📰', name: 'Sponsored Article', desc: 'Native content by our writers', price: 'From $500' },
+  { emoji: '🎯', name: 'Display Ads', desc: 'Banner placements on feed', price: 'From $200/wk' },
+  { emoji: '📧', name: 'Newsletter Sponsor', desc: 'Featured in daily digest', price: 'From $150' },
+  { emoji: '📌', name: 'Homepage Feature', desc: 'Hero slot for 24 hours', price: 'From $800' },
+];
+
 export default function ContactPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '56px 24px 80px' }}>
-      <div style={{ textAlign: 'center', marginBottom: 48 }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>Get in Touch</h1>
-        <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', maxWidth: 50, margin: '0 auto' }}>Questions, partnerships, advertising, or press inquiries. We&apos;d love to hear from you.</p>
-      </div>
+      <header style={{ textAlign: 'center', marginBottom: 48, animation: 'fade-in-up 0.6s var(--ease-out-expo) both' }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12,
+          padding: '6px 14px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 600,
+          background: 'var(--primary-light)', color: 'var(--primary)', letterSpacing: '0.02em', textTransform: 'uppercase',
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block', animation: 'pulse-dot 2s ease-in-out infinite' }} />
+          We reply within 24h
+        </div>
+        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 10 }}>Get in Touch</h1>
+        <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', maxWidth: 520, margin: '0 auto', lineHeight: 1.6 }}>
+          Questions, partnerships, advertising, or press inquiries &mdash; we&apos;d love to hear from you.
+        </p>
+      </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 48 }}>
-        {[
-          { icon: '📧', title: 'General Inquiries', desc: 'Questions about the platform, feedback, or suggestions', email: 'hello@026newsblog.com' },
-          { icon: '📢', title: 'Advertising', desc: 'Sponsored content, display ads, and brand partnerships', email: 'ads@026newsblog.com' },
-          { icon: '🎤', title: 'Press & Media', desc: 'Interview requests, press releases, media kits', email: 'press@026newsblog.com' },
-        ].map((card) => (
-          <div key={card.title} style={{ padding: 28, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14, textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 12 }}>{card.icon}</div>
-            <div style={{ fontSize: '0.92rem', fontWeight: 700, marginBottom: 4 }}>{card.title}</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: 12 }}>{card.desc}</div>
-            <a href={`mailto:${card.email}`} style={{ fontSize: '0.82rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>{card.email}</a>
+      <section style={{
+        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 48,
+      }}>
+        {contactCards.map((card, i) => (
+          <div
+            key={card.title}
+            className="contact-card"
+            style={{
+              padding: 28, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+              borderRadius: 14, textAlign: 'center', transition: 'transform 0.25s var(--ease-out-expo), box-shadow 0.25s var(--ease-out-expo)',
+              animation: `fade-in-up 0.5s var(--ease-out-expo) ${0.1 + i * 0.08}s both`,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 30px oklch(0% 0 0 / 0.08)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
+          >
+            <div style={{ fontSize: '2.2rem', marginBottom: 12, lineHeight: 1 }}>{card.emoji}</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: 4 }}>{card.title}</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-tertiary)', marginBottom: 14, lineHeight: 1.5 }}>{card.desc}</div>
+            <a href={`mailto:${card.email}`} style={{
+              fontSize: '0.82rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 4, transition: 'gap 0.2s',
+            }}
+              onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.gap = '8px'}
+              onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.gap = '4px'}
+            >
+              {card.email}
+              <span style={{ fontSize: '0.9rem', display: 'inline-block', transition: 'transform 0.2s' }}>→</span>
+            </a>
           </div>
         ))}
-      </div>
+      </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 40 }}>
-        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 36 }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 4 }}>Send us a message</h2>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-tertiary)', marginBottom: 28 }}>We typically respond within 24 hours on business days.</p>
-          <form onSubmit={(e) => e.preventDefault()}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
-              <div><label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>First Name</label><input placeholder="Wayne" style={inputStyle} /></div>
-              <div><label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>Last Name</label><input placeholder="Nyamu" style={inputStyle} /></div>
+        <div style={{
+          background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 16, padding: 36,
+          animation: 'fade-in-up 0.5s var(--ease-out-expo) 0.3s both',
+        }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: 4 }}>Send us a message</h2>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-tertiary)', marginBottom: 28, lineHeight: 1.5 }}>
+            We typically respond within 24 hours on business days.
+          </p>
+          {submitted ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ fontSize: '3rem', marginBottom: 16 }}>✓</div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>Message sent!</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                Thanks for reaching out. We&apos;ll get back to you within 24 hours.
+              </p>
             </div>
-            <div style={{ marginBottom: 18 }}><label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>Email</label><input type="email" placeholder="you@example.com" style={inputStyle} /></div>
-            <div style={{ marginBottom: 18 }}><label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>Subject</label>
-              <select style={{ ...inputStyle, appearance: 'none', backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', cursor: 'pointer' as const }}>
-                <option>General Inquiry</option><option>Advertising & Partnerships</option><option>Author Application</option><option>Technical Support</option><option>Bug Report</option><option>Press & Media</option><option>Legal</option>
-              </select>
-            </div>
-            <div style={{ marginBottom: 18 }}><label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>Message</label><textarea placeholder="Tell us how we can help..." rows={5} style={{ ...inputStyle, resize: 'vertical' as const, minHeight: 120, lineHeight: 1.5 }} /></div>
-            <button type="submit" style={{ padding: '12px 24px', borderRadius: 9, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: 'var(--primary)', color: 'oklch(98% 0.005 175)', border: 'none', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>Send Message</button>
-          </form>
+          ) : (
+            <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 18 }}>
+                <InputGroup label="First Name" placeholder="Wayne" />
+                <InputGroup label="Last Name" placeholder="Nyamu" />
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Email</div>
+                <input type="email" placeholder="you@example.com" className="contact-input" required />
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Subject</div>
+                <select className="contact-input" style={{
+                  appearance: 'none', cursor: 'pointer',
+                  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E\")",
+                  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',
+                }}>
+                  <option>General Inquiry</option>
+                  <option>Advertising & Partnerships</option>
+                  <option>Author Application</option>
+                  <option>Technical Support</option>
+                  <option>Bug Report</option>
+                  <option>Press & Media</option>
+                  <option>Legal</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>Message</div>
+                <textarea placeholder="Tell us how we can help..." rows={5} className="contact-input" style={{ resize: 'vertical', minHeight: 120, lineHeight: 1.6 }} required />
+              </div>
+              <button type="submit" style={{
+                padding: '13px 24px', borderRadius: 9, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'inherit', background: 'var(--primary)', color: 'oklch(98% 0.005 175)', border: 'none',
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'opacity 0.2s, transform 0.2s',
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.9'; (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.02)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = ''; (e.currentTarget as HTMLButtonElement).style.transform = ''; }}
+              >
+                Send Message
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+              </button>
+            </form>
+          )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ padding: 24, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14 }}>
-            <h3 style={{ fontSize: '0.92rem', fontWeight: 700, marginBottom: 8 }}>Advertise with Us</h3>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>Reach East Africa&apos;s most engaged tech and business audience.</p>
-            <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
-              <div style={{ flex: 1, textAlign: 'center', padding: '12px 8px', background: 'var(--bg-inset)', borderRadius: 9 }}><div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>284K</div><div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginTop: 2 }}>Monthly Views</div></div>
-              <div style={{ flex: 1, textAlign: 'center', padding: '12px 8px', background: 'var(--bg-inset)', borderRadius: 9 }}><div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>6.8%</div><div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginTop: 2 }}>Engagement</div></div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { icon: '📰', name: 'Sponsored Article', desc: 'Native content by our writers', price: 'From $500' },
-                { icon: '🎯', name: 'Display Ads', desc: 'Banner placements on feed', price: 'From $200/wk' },
-                { icon: '📧', name: 'Newsletter Sponsor', desc: 'Featured in daily digest', price: 'From $150' },
-                { icon: '📌', name: 'Homepage Feature', desc: 'Hero slot for 24 hours', price: 'From $800' },
-              ].map((opt) => (
-                <div key={opt.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, background: 'var(--bg-inset)', borderRadius: 9 }}>
-                  <span style={{ fontSize: '1.2rem' }}>{opt.icon}</span>
-                  <div style={{ flex: 1 }}><div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{opt.name}</div><div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)' }}>{opt.desc}</div></div>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)' }}>{opt.price}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ padding: 24, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14 }}>
-            <h3 style={{ fontSize: '0.92rem', fontWeight: 700, marginBottom: 8 }}>Our Audience</h3>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 12 }}>Tech professionals, entrepreneurs, investors, and decision-makers across East Africa aged 22-45.</p>
-            <div style={{ display: 'flex', gap: 16 }}>
-              <div style={{ flex: 1, textAlign: 'center', padding: '12px 8px', background: 'var(--bg-inset)', borderRadius: 9 }}><div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>73%</div><div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginTop: 2 }}>Mobile</div></div>
-              <div style={{ flex: 1, textAlign: 'center', padding: '12px 8px', background: 'var(--bg-inset)', borderRadius: 9 }}><div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>68%</div><div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginTop: 2 }}>Kenya</div></div>
-            </div>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fade-in-up 0.5s var(--ease-out-expo) 0.4s both' }}>
+          <AdvertiseWidget />
+          <AudienceWidget />
         </div>
       </div>
 
-      <div style={{ marginTop: 48 }}>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20, textAlign: 'center' }}>Frequently Asked Questions</h2>
+      <section style={{ marginTop: 64, animation: 'fade-in-up 0.5s var(--ease-out-expo) 0.5s both' }}>
+        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 24, textAlign: 'center' }}>Frequently Asked Questions</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 700, margin: '0 auto' }}>
           {faqItems.map((item, i) => (
-            <div key={i} onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ padding: '18px 20px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 12, cursor: 'pointer' }}>
-              <div style={{ fontSize: '0.88rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                {item.q}
-                <span style={{ fontSize: '1.2rem', color: 'var(--text-tertiary)' }}>{openFaq === i ? '−' : '+'}</span>
+            <div
+              key={i}
+              onClick={() => setOpenFaq(openFaq === i ? null : i)}
+              style={{
+                padding: '18px 20px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                borderRadius: 12, cursor: 'pointer', transition: 'border-color 0.2s',
+                animation: `slide-up 0.4s var(--ease-out-quart) ${0.6 + i * 0.06}s both`,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--primary)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = ''; }}
+            >
+              <div style={{
+                fontSize: '0.88rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between',
+                alignItems: 'center', gap: 12,
+              }}>
+                <span>{item.q}</span>
+                <span style={{
+                  fontSize: '1.1rem', color: 'var(--primary)', flexShrink: 0,
+                  transition: 'transform 0.3s var(--ease-out-expo)',
+                  transform: openFaq === i ? 'rotate(45deg)' : 'rotate(0deg)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 22, height: 22, borderRadius: '50%', background: 'var(--primary-light)',
+                }}>
+                  +
+                </span>
               </div>
-              {openFaq === i && <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: 12 }}>{item.a}</p>}
+              {openFaq === i && (
+                <p style={{
+                  fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.7, marginTop: 14,
+                  animation: 'fade-in 0.3s var(--ease-out-expo) both',
+                }}>
+                  {item.a}
+                </p>
+              )}
             </div>
           ))}
         </div>
+      </section>
+
+      <section style={{
+        marginTop: 64, textAlign: 'center', padding: 48, background: 'var(--bg-surface)',
+        border: '1px solid var(--border-subtle)', borderRadius: 20,
+        animation: 'fade-in-up 0.5s var(--ease-out-expo) 0.6s both',
+      }}>
+        <div style={{ fontSize: '2.4rem', marginBottom: 12, lineHeight: 1 }}>🌍</div>
+        <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 8 }}>Visit Our Office</h2>
+        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 4 }}>
+          026 Newsblog Media House
+        </p>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+          Nairobi, Kenya<br />
+          hello@026newsblog.com
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function InputGroup({ label, placeholder }: { label: string; placeholder: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</div>
+      <input placeholder={placeholder} className="contact-input" required />
+    </div>
+  );
+}
+
+function AdvertiseWidget() {
+  return (
+    <div style={{ padding: 24, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14 }}>
+      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: 8 }}>Advertise with Us</h3>
+      <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 14 }}>
+        Reach East Africa&apos;s most engaged tech and business audience.
+      </p>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        <StatBox value="284K" label="Monthly Views" />
+        <StatBox value="6.8%" label="Engagement" />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {adOptions.map((opt) => (
+          <div key={opt.name} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: 12,
+            background: 'var(--bg-inset)', borderRadius: 9, transition: 'background 0.2s',
+          }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-elevated)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = ''; }}
+          >
+            <span style={{ fontSize: '1.2rem' }}>{opt.emoji}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{opt.name}</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-tertiary)', marginTop: 1 }}>{opt.desc}</div>
+            </div>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap' }}>{opt.price}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 14px',
-  borderRadius: 9,
-  border: '1px solid var(--border)',
-  background: 'var(--bg-elevated)',
-  color: 'var(--text-primary)',
-  fontSize: '0.85rem',
-  fontFamily: 'inherit',
-  outline: 'none',
-  boxSizing: 'border-box' as const,
-};
+function AudienceWidget() {
+  return (
+    <div style={{ padding: 24, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 14 }}>
+      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: 8 }}>Our Audience</h3>
+      <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 14 }}>
+        Tech professionals, entrepreneurs, investors, and decision-makers across East Africa aged 22&ndash;45.
+      </p>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <StatBox value="73%" label="Mobile" />
+        <StatBox value="68%" label="Kenya" />
+      </div>
+    </div>
+  );
+}
+
+function StatBox({ value, label }: { value: string; label: string }) {
+  return (
+    <div style={{ flex: 1, textAlign: 'center', padding: '14px 8px', background: 'var(--bg-inset)', borderRadius: 9 }}>
+      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>{value}</div>
+      <div style={{ fontSize: '0.65rem', color: 'var(--text-tertiary)', marginTop: 2 }}>{label}</div>
+    </div>
+  );
+}

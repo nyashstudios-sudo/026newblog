@@ -1,0 +1,101 @@
+import { createSupabaseContext } from '@/lib/supabase/context';
+
+export async function getSetting(key: string): Promise<unknown | undefined> {
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return undefined;
+  const sb = ctx.supabaseAdmin as any;
+  const { data } = await sb.from('platform_settings').select('value').eq('key', key).maybeSingle();
+  return data?.value;
+}
+
+export interface AppSettingsFlat {
+  site_title?: string;
+  site_description?: string;
+  site_url?: string;
+  support_email?: string;
+  favicon_url?: string;
+  enable_registration?: boolean;
+  enable_comments?: boolean;
+  enable_chat?: boolean;
+  require_email_verification?: boolean;
+  content_per_page?: number;
+  breaking_news_ticker?: boolean;
+  auto_approve?: boolean;
+  enable_google_oauth?: boolean;
+  enable_github_oauth?: boolean;
+  invite_only_mode?: boolean;
+  default_language?: string;
+  timezone?: string;
+  date_format?: string;
+  currency_display?: string;
+  hero_slideshow?: boolean;
+  trending_sidebar?: boolean;
+  newsletter_widget?: boolean;
+  rss_feed_section?: boolean;
+  chat_widget?: boolean;
+  primary_color?: string;
+  accent_color?: string;
+  hero_slideshow_interval?: number;
+  default_feed_tab?: string;
+  payout_processing_time?: string;
+  allow_self_publishing?: boolean;
+  moderation_external_links?: boolean;
+  moderation_community_reports?: boolean;
+  moderation_auto_hide?: boolean;
+  moderation_profanity_filter?: boolean;
+  moderation_ai_threshold?: number;
+  min_word_count?: number;
+  max_tags?: number;
+  auto_generate_audio?: boolean;
+  reading_time_display?: boolean;
+  related_articles?: boolean;
+  seo_title_template?: string;
+  seo_description?: string;
+  seo_og_image?: string;
+  social_twitter?: string;
+  social_facebook?: string;
+  social_linkedin?: string;
+  social_instagram?: string;
+  analytics_ga_id?: string;
+  analytics_custom_head?: string;
+  sitemap_auto_generate?: boolean;
+  index_articles?: boolean;
+  index_authors?: boolean;
+  rate_limiting?: boolean;
+  cors_restriction?: boolean;
+  brute_force_protection?: boolean;
+  force_https?: boolean;
+  backup_frequency?: string;
+  backup_retention?: string;
+  ad_sponsored_article?: number;
+  ad_display_ads?: number;
+  ad_newsletter_sponsor?: number;
+  ad_homepage_feature?: number;
+  storage_bucket?: string;
+  storage_max_upload?: number;
+  tts_voice_model?: string;
+  mpesa_shortcode?: string;
+  mpesa_environment?: string;
+  mpesa_consumer_key?: string;
+  mpesa_consumer_secret?: string;
+  mpesa_passkey?: string;
+  mpesa_callback_url?: string;
+  email_from?: string;
+  email_reply_to?: string;
+  feed_cache_ttl?: number;
+  article_cache_ttl?: number;
+  site_appearance?: { theme?: string; logoUrl?: string | null };
+  revenue_share_pct?: { author?: number; platform?: number };
+  withdrawal_threshold_usd?: { amount?: number };
+  moderation?: { autoFlag?: boolean; requireReview?: boolean };
+}
+
+export async function getAppSettings(): Promise<AppSettingsFlat> {
+  const { data: ctx } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) return {};
+  const sb = ctx.supabaseAdmin as any;
+  const { data: rows } = await sb.from('platform_settings').select('key, value');
+  const result: Record<string, unknown> = {};
+  (rows || []).forEach((r: any) => { result[r.key] = r.value; });
+  return result as AppSettingsFlat;
+}

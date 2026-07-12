@@ -1,8 +1,10 @@
 import { createSupabaseContext } from '@/lib/supabase/context';
-
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://026newsblog.vercel.app';
+import { getAppSettings } from '@/lib/settings';
 
 export default async function sitemap() {
+  const settings = await getAppSettings();
+  const siteUrl = settings.site_url || process.env.NEXT_PUBLIC_SITE_URL || 'https://026newsblog.vercel.app';
+
   const { data: ctx } = await createSupabaseContext({ auth: 'none' });
   if (!ctx) return [];
 
@@ -21,7 +23,7 @@ export default async function sitemap() {
     { url: `${siteUrl}/explore`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
     { url: `${siteUrl}/categories`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.7 },
     { url: `${siteUrl}/auth/login`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.3 },
-    { url: `${siteUrl}/auth/register`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.3 },
+    ...(settings.enable_registration !== false ? [{ url: `${siteUrl}/auth/register`, lastModified: new Date(), changeFrequency: 'monthly' as const, priority: 0.3 }] : []),
     { url: `${siteUrl}/stats`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.4 },
     { url: `${siteUrl}/listen`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.4 },
   ];

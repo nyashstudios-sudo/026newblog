@@ -30,8 +30,18 @@ export function HeroSlideshow() {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [current, setCurrent] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [intervalMs, setIntervalMs] = useState(5000);
+  const [showHero, setShowHero] = useState(true);
 
   useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(r => r.json())
+      .then((d: any) => {
+        const heroEnabled = d.settings?.hero_slideshow;
+        if (heroEnabled === false) setShowHero(false);
+        const interval = d.settings?.hero_slideshow_interval;
+        if (interval && interval > 0) setIntervalMs(interval * 1000);
+      }, () => {});
     fetch('/api/articles/hero')
       .then((r) => r.json())
       .then((d) => setSlides(d.slides || []))
@@ -43,9 +53,11 @@ export function HeroSlideshow() {
 
   useEffect(() => {
     if (slides.length <= 1) return;
-    const timer = setInterval(() => setCurrent((c) => (c + 1) % slides.length), 5000);
+    const timer = setInterval(() => setCurrent((c) => (c + 1) % slides.length), intervalMs);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [slides.length, intervalMs]);
+
+  if (!showHero) return null;
 
   if (loading) {
     return <div className="hero"><div className="skeleton w-full h-full rounded-[20px]" /></div>;
@@ -55,7 +67,7 @@ export function HeroSlideshow() {
     return (
       <div className="hero bg-[var(--category-bg)] flex items-center justify-center">
         <div className="text-center px-6">
-          <h1 className="hero-title text-white">Welcome to 026Newsblog</h1>
+          <h1 className="hero-title text-white">Welcome</h1>
           <p className="text-white/60">Discover breaking news and stories from top authors</p>
         </div>
       </div>

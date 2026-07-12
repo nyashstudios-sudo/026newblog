@@ -3,22 +3,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArticleCard, type ArticleCardData } from './article-card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSettings } from '@/components/providers/settings-provider';
 
 interface InfiniteFeedProps {
   tab?: 'foryou' | 'recent' | 'popular';
 }
 
-export function InfiniteFeed({ tab = 'recent' }: InfiniteFeedProps) {
+export function InfiniteFeed({ tab }: InfiniteFeedProps) {
+  const settings = useSettings();
   const [articles, setArticles] = useState<ArticleCardData[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
+  const perPage = settings.contentPerPage || 12;
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const effectiveTab = tab || (settings.defaultFeedTab === 'popular' ? 'popular' : settings.defaultFeedTab === 'foryou' ? 'foryou' : 'recent');
 
   const loadPage = useCallback(async (pageNum: number, reset = false) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/articles/feed?page=${pageNum}&tab=${tab}&limit=12`);
+      const res = await fetch(`/api/articles/feed?page=${pageNum}&tab=${effectiveTab}&limit=${perPage}`);
       const data = await res.json();
       setArticles((prev) => (reset ? data.articles : [...prev, ...data.articles]));
       setHasMore(data.hasMore);
@@ -27,7 +31,7 @@ export function InfiniteFeed({ tab = 'recent' }: InfiniteFeedProps) {
     } finally {
       setLoading(false);
     }
-  }, [tab]);
+  }, [effectiveTab, perPage]);
 
   useEffect(() => {
     setPage(1);

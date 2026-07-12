@@ -1,8 +1,10 @@
 import type { MetadataRoute } from 'next';
+import { getAppSettings } from '@/lib/settings';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://026newsblog.vercel.app';
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const settings = await getAppSettings();
+  const siteUrl = settings.site_url || process.env.NEXT_PUBLIC_SITE_URL || 'https://026newsblog.vercel.app';
 
-export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       { userAgent: '*', allow: '/', disallow: ['/api/', '/auth/', '/admin/', '/author/'] },

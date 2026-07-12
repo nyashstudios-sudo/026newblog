@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useSettings } from '@/components/providers/settings-provider';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Avatar } from '@/components/ui/avatar';
 import { Bell, Search, Menu, X, LogOut } from 'lucide-react';
@@ -11,6 +12,7 @@ import { useState, useEffect } from 'react';
 export function Navbar() {
   const pathname = usePathname();
   const { user, loading, logout } = useAuth();
+  const settings = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const isAuthPage = pathname.startsWith('/auth/');
@@ -27,7 +29,7 @@ export function Navbar() {
     { href: '/', label: 'Home' },
     { href: '/explore', label: 'Explore' },
     { href: '/categories', label: 'Categories' },
-    ...(user ? [{ href: '/chat', label: 'Messages' }] : []),
+    ...(user && settings.enableChat !== false ? [{ href: '/chat', label: 'Messages' }] : []),
     ...(user?.role === 'author' ? [{ href: '/author/dashboard', label: 'Dashboard' }] : []),
     ...(user?.role === 'admin' ? [{ href: '/admin', label: 'Admin' }] : []),
   ];
@@ -117,13 +119,15 @@ const primaryLinks = [
                     cursor: 'pointer', fontFamily: 'inherit',
                   }}>Sign In</button>
                 </Link>
-                <Link href="/auth/register">
-                  <button style={{
-                    padding: '7px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
-                    background: 'var(--primary)', border: 'none', color: 'oklch(98% 0.005 175)',
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}>Join Free</button>
-                </Link>
+                {settings.enableRegistration !== false && (
+                  <Link href="/auth/register">
+                    <button style={{
+                      padding: '7px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
+                      background: 'var(--primary)', border: 'none', color: 'oklch(98% 0.005 175)',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Join Free</button>
+                  </Link>
+                )}
               </div>
             )
           )}
@@ -172,13 +176,15 @@ const primaryLinks = [
                     cursor: 'pointer', fontFamily: 'inherit',
                   }}>Sign in</button>
                 </Link>
-                <Link href="/auth/register" onClick={() => setMenuOpen(false)}>
-                  <button style={{
-                    padding: '7px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
-                    background: 'var(--primary)', border: 'none', color: 'oklch(98% 0.005 175)',
-                    cursor: 'pointer', fontFamily: 'inherit',
-                  }}>Join</button>
-                </Link>
+                {settings.enableRegistration !== false && (
+                  <Link href="/auth/register" onClick={() => setMenuOpen(false)}>
+                    <button style={{
+                      padding: '7px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
+                      background: 'var(--primary)', border: 'none', color: 'oklch(98% 0.005 175)',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>Join</button>
+                  </Link>
+                )}
               </>
             )}
           </div>

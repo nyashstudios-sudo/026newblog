@@ -11,8 +11,14 @@ interface TickerItem {
 
 export function BreakingNewsTicker() {
   const [items, setItems] = useState<TickerItem[]>([]);
+  const [enabled, setEnabled] = useState(true);
 
   useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(r => r.json())
+      .then((d: any) => {
+        if (d.settings?.breaking_news_ticker === false) setEnabled(false);
+      }, () => {});
     fetch('/api/breaking-news')
       .then((r) => r.json())
       .then((d) => setItems(d.items || []))
@@ -32,6 +38,8 @@ export function BreakingNewsTicker() {
     { id: '1', title: 'Welcome to 026Newsblog — Your source for breaking news and stories' },
     { id: '2', title: 'Discover trending articles from top authors worldwide' },
   ];
+
+  if (!enabled) return null;
 
   const doubled = [...display, ...display];
 

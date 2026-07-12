@@ -7,6 +7,7 @@ import { ArticleCard } from '@/components/articles/article-card';
 import { RssFeedWidget } from '@/components/rss/rss-feed-widget';
 import { formatNumber } from '@/lib/utils';
 import { MiniListSkeleton } from '@/components/ui/mini-list-skeleton';
+import { useSettings } from '@/components/providers/settings-provider';
 
 interface ArticleData {
   id: string; title: string; slug: string; likeCount?: number; viewCount?: number;
@@ -63,9 +64,10 @@ function TrendingSection() {
 }
 
 export default function HomePage() {
+  const settings = useSettings();
   const [articles, setArticles] = useState<ArticleData[]>([]);
   const [categories, setCategories] = useState<{ name: string; slug: string }[]>([]);
-  const [activeTab, setActiveTab] = useState('for-you');
+  const [activeTab, setActiveTab] = useState(settings.defaultFeedTab === 'popular' ? 'popular' : settings.defaultFeedTab === 'recent' ? 'recent' : 'for-you');
   const [loading, setLoading] = useState(true);
   const [scrollVisible, setScrollVisible] = useState(false);
   const feedRef = useRef<HTMLDivElement>(null);
@@ -74,8 +76,10 @@ export default function HomePage() {
     async function load() {
       try {
         const base = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        const perPage = settings.contentPerPage || 12;
+        const feedTab = settings.defaultFeedTab === 'foryou' ? 'for-you' : (settings.defaultFeedTab || 'recent');
         const [feedRes, catRes] = await Promise.all([
-          fetch(`${base}/api/articles/feed?page=1&tab=recent&limit=12`, { cache: 'no-store' }),
+          fetch(`${base}/api/articles/feed?page=1&tab=${feedTab}&limit=${perPage}`, { cache: 'no-store' }),
           fetch(`${base}/api/categories`, { cache: 'no-store' }),
         ]);
         const feed = feedRes.ok ? await feedRes.json() : { articles: [] };
@@ -152,19 +156,23 @@ export default function HomePage() {
         </main>
 
         <aside className="sidebar">
-          <div className="sidebar-section">
-            <h3 className="sidebar-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
-              Trending Now
-            </h3>
-            <div className="trending-list">
-              <TrendingSection />
+          {settings.trendingSidebar !== false && (
+            <div className="sidebar-section">
+              <h3 className="sidebar-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
+                Trending Now
+              </h3>
+              <div className="trending-list">
+                <TrendingSection />
+              </div>
             </div>
-          </div>
+          )}
 
-          <Suspense fallback={null}>
-            <RssFeedWidget />
-          </Suspense>
+          {settings.rssFeedSection !== false && (
+            <Suspense fallback={null}>
+              <RssFeedWidget />
+            </Suspense>
+          )}
 
           <div className="sidebar-section">
             <h3 className="sidebar-title">
@@ -178,26 +186,30 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="sidebar-section newsletter-section">
-            <h3 className="sidebar-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
-              Daily Digest
-            </h3>
-            <p className="newsletter-desc">Get the top 5 stories delivered to your inbox every morning. No spam, just signal.</p>
-            <div className="newsletter-input-wrap">
-              <input type="email" className="newsletter-input" placeholder="your@email.com" />
-              <button className="newsletter-btn">Subscribe</button>
+          {settings.newsletterWidget !== false && (
+            <div className="sidebar-section newsletter-section">
+              <h3 className="sidebar-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
+                Daily Digest
+              </h3>
+              <p className="newsletter-desc">Get the top 5 stories delivered to your inbox every morning. No spam, just signal.</p>
+              <div className="newsletter-input-wrap">
+                <input type="email" className="newsletter-input" placeholder="your@email.com" />
+                <button className="newsletter-btn">Subscribe</button>
+              </div>
             </div>
-          </div>
+          )}
         </aside>
       </div>
 
-      <div className="chat-widget">
-        <Link href="/chat" className="chat-btn" style={{ display: 'flex', textDecoration: 'none' }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-          <span className="chat-badge">3</span>
-        </Link>
-      </div>
+      {settings.chatWidget !== false && (
+        <div className="chat-widget">
+          <Link href="/chat" className="chat-btn" style={{ display: 'flex', textDecoration: 'none' }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            <span className="chat-badge">3</span>
+          </Link>
+        </div>
+      )}
 
       <button
         className={`scroll-top${scrollVisible ? ' visible' : ''}`}

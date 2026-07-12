@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useSettings } from '@/components/providers/settings-provider';
 import { formatDate, formatNumber } from '@/lib/utils';
 
 interface Article {
@@ -28,6 +29,7 @@ export default function ArticlePage() {
   const slug = params.slug as string;
   const router = useRouter();
   const { user: currentUser } = useAuth();
+  const settings = useSettings();
   const [article, setArticle] = useState<Article | null>(null);
   const [related, setRelated] = useState<Article[]>([]);
   const [interaction, setInteraction] = useState({ liked: false, saved: false, following: false });
@@ -219,84 +221,86 @@ export default function ArticlePage() {
           </button>
         </div>
 
-        {/* Comments */}
-        <section className="article-comments">
-          <div className="article-comments-header">
-            <h2 className="article-comments-title">Discussion</h2>
-            <span className="article-comments-count">{comments.length} comments</span>
-          </div>
+{/* Comments */}
+        {settings.enableComments !== false && (
+          <section className="article-comments">
+            <div className="article-comments-header">
+              <h2 className="article-comments-title">Discussion</h2>
+              <span className="article-comments-count">{comments.length} comments</span>
+            </div>
 
-          <div className="article-comment-input">
-            <div className="article-comment-input-avatar">Y</div>
-            <div className="article-comment-input-body">
-              <textarea
-                className="article-comment-textarea" placeholder="Share your thoughts on this article..."
-                value={commentText} onChange={e => setCommentText(e.target.value)}
-              />
-              <div className="article-comment-actions">
-                <button className="article-comment-submit" onClick={submitComment} disabled={commenting || !commentText.trim()}>
-                  {commenting ? 'Posting...' : 'Post Comment'}
-                </button>
+            <div className="article-comment-input">
+              <div className="article-comment-input-avatar">Y</div>
+              <div className="article-comment-input-body">
+                <textarea
+                  className="article-comment-textarea" placeholder="Share your thoughts on this article..."
+                  value={commentText} onChange={e => setCommentText(e.target.value)}
+                />
+                <div className="article-comment-actions">
+                  <button className="article-comment-submit" onClick={submitComment} disabled={commenting || !commentText.trim()}>
+                    {commenting ? 'Posting...' : 'Post Comment'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="article-comment-thread">
-            {comments.map(c => (
-              <div key={c.id} className="article-comment">
-                <div className="article-comment-avatar" style={{ background: `linear-gradient(135deg, oklch(50% 0.14 220), oklch(45% 0.12 200))` }}>
-                  {c.user.firstName[0]}{c.user.lastName[0]}
-                </div>
-                <div className="article-comment-body">
-                  <div className="article-comment-meta">
-                    <span className="article-comment-name">{c.user.firstName} {c.user.lastName}</span>
-                    <span className="article-comment-time">{new Date(c.createdAt).toLocaleDateString()}</span>
+            <div className="article-comment-thread">
+              {comments.map(c => (
+                <div key={c.id} className="article-comment">
+                  <div className="article-comment-avatar" style={{ background: `linear-gradient(135deg, oklch(50% 0.14 220), oklch(45% 0.12 200))` }}>
+                    {c.user.firstName[0]}{c.user.lastName[0]}
                   </div>
-                  <p className="article-comment-text">{c.content}</p>
-                  <div className="article-comment-actions">
-                    <button className="article-comment-action">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg>
-                      {Math.floor(Math.random() * 30)}
-                    </button>
-                    <button className="article-comment-action">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                      Reply
-                    </button>
-                  </div>
-                  {c.replies && c.replies.length > 0 && (
-                    <div className="article-comment-replies">
-                      {c.replies.map(r => (
-                        <div key={r.id} className="article-comment">
-                          <div className="article-comment-avatar" style={{ background: `linear-gradient(135deg, oklch(50% 0.14 100), oklch(45% 0.12 120))`, width: 28, height: 28, fontSize: '0.55rem' }}>
-                            {r.user.firstName[0]}{r.user.lastName[0]}
-                          </div>
-                          <div className="article-comment-body">
-                            <div className="article-comment-meta">
-                              <span className="article-comment-name">{r.user.firstName} {r.user.lastName}</span>
-                              <span className="article-comment-time">{new Date(r.createdAt).toLocaleDateString()}</span>
-                            </div>
-                            <p className="article-comment-text">{r.content}</p>
-                            <div className="article-comment-actions">
-                              <button className="article-comment-action">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg>
-                                {Math.floor(Math.random() * 10)}
-                              </button>
-                              <button className="article-comment-action">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                                Reply
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                  <div className="article-comment-body">
+                    <div className="article-comment-meta">
+                      <span className="article-comment-name">{c.user.firstName} {c.user.lastName}</span>
+                      <span className="article-comment-time">{new Date(c.createdAt).toLocaleDateString()}</span>
                     </div>
-                  )}
+                    <p className="article-comment-text">{c.content}</p>
+                    <div className="article-comment-actions">
+                      <button className="article-comment-action">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg>
+                        {Math.floor(Math.random() * 30)}
+                      </button>
+                      <button className="article-comment-action">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                        Reply
+                      </button>
+                    </div>
+                    {c.replies && c.replies.length > 0 && (
+                      <div className="article-comment-replies">
+                        {c.replies.map(r => (
+                          <div key={r.id} className="article-comment">
+                            <div className="article-comment-avatar" style={{ background: `linear-gradient(135deg, oklch(50% 0.14 100), oklch(45% 0.12 120))`, width: 28, height: 28, fontSize: '0.55rem' }}>
+                              {r.user.firstName[0]}{r.user.lastName[0]}
+                            </div>
+                            <div className="article-comment-body">
+                              <div className="article-comment-meta">
+                                <span className="article-comment-name">{r.user.firstName} {r.user.lastName}</span>
+                                <span className="article-comment-time">{new Date(r.createdAt).toLocaleDateString()}</span>
+                              </div>
+                              <p className="article-comment-text">{r.content}</p>
+                              <div className="article-comment-actions">
+                                <button className="article-comment-action">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg>
+                                  {Math.floor(Math.random() * 10)}
+                                </button>
+                                <button className="article-comment-action">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                                  Reply
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {comments.length === 0 && <p style={{ fontSize: '0.88rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: 24 }}>No comments yet. Be the first to share your thoughts!</p>}
-          </div>
-        </section>
+              ))}
+              {comments.length === 0 && <p style={{ fontSize: '0.88rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: 24 }}>No comments yet. Be the first to share your thoughts!</p>}
+            </div>
+          </section>
+        )}
 
         {/* Related Articles */}
         {related.length > 0 && (
@@ -326,12 +330,14 @@ export default function ArticlePage() {
           </svg>
           <span className="article-float-btn-count">{formatNumber(likeCount)}</span>
         </button>
-        <button className="article-float-btn" onClick={() => document.querySelector('.article-comments')?.scrollIntoView({ behavior: 'smooth' })}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          <span className="article-float-btn-count">{comments.length}</span>
-        </button>
+        {settings.enableComments !== false && (
+          <button className="article-float-btn" onClick={() => document.querySelector('.article-comments')?.scrollIntoView({ behavior: 'smooth' })}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+            <span className="article-float-btn-count">{comments.length}</span>
+          </button>
+        )}
         <div className="article-float-divider" />
         <button className={`article-float-btn${interaction.saved ? ' saved' : ''}`} onClick={toggleSave}>
           <svg viewBox="0 0 24 24" fill={interaction.saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

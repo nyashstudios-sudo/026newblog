@@ -68,6 +68,15 @@ export default function ChatPageWrapper() {
 function ChatPage() {
   const { user, loading: authLoading } = useAuth();
   const { typingUsers, incomingMessages, lastReadReceipt, setTyping, connected } = useChat();
+  const [chatDisabled, setChatDisabled] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/admin/settings')
+      .then(r => r.json())
+      .then((d: any) => {
+        if (d.settings?.enable_chat === false) setChatDisabled(true);
+      }, () => {});
+  }, []);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
@@ -323,6 +332,16 @@ function ChatPage() {
     : '';
 
   if (authLoading) return null;
+
+  if (chatDisabled) {
+    return (
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '96px 24px', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16 }}>Chat Unavailable</h1>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>The chat feature is currently disabled by the platform administrator.</p>
+        <Link href="/" style={{ padding: '10px 22px', borderRadius: 9, background: 'var(--primary)', color: 'oklch(98% 0.005 175)', textDecoration: 'none', fontWeight: 600, display: 'inline-block' }}>Back to Home</Link>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
