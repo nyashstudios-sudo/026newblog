@@ -6,6 +6,7 @@ import { HeroSlideshow } from '@/components/articles/hero-slideshow';
 import { ArticleCard } from '@/components/articles/article-card';
 import { RssFeedWidget } from '@/components/rss/rss-feed-widget';
 import { formatNumber } from '@/lib/utils';
+import { MiniListSkeleton } from '@/components/ui/mini-list-skeleton';
 
 interface ArticleData {
   id: string; title: string; slug: string; likeCount?: number; viewCount?: number;
@@ -31,11 +32,13 @@ function mapArticle(a: any): ArticleData {
 
 function TrendingSection() {
   const [trending, setTrending] = useState<{ title: string; meta: string }[]>([]);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     fetch('/api/articles/trending')
       .then(r => r.ok ? r.json() : { trending: [] })
       .then(d => setTrending(d.trending || []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
   const items = trending.length > 0 ? trending : [
     { title: 'Welcome to 026Newsblog', meta: 'Trending · New' },
@@ -44,7 +47,9 @@ function TrendingSection() {
   ];
   return (
     <>
-      {items.map((item, i) => (
+      {loading ? (
+        <MiniListSkeleton rows={4} />
+      ) : items.map((item, i) => (
         <a href="#" key={i} className="trending-item" onClick={(e) => { e.preventDefault(); }}>
           <span className="trending-number">{String(i + 1).padStart(2, '0')}</span>
           <div className="trending-content">

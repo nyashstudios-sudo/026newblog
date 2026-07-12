@@ -1,22 +1,19 @@
 import Parser from 'rss-parser';
-import { createAdminClient } from '@supabase/server/core';
+import { createSupabaseContext } from '@/lib/supabase/context';
 
 const parser = new Parser({
   timeout: 10000,
   headers: { 'User-Agent': '026Newsblog RSS Reader/1.0' },
 });
 
-function getSb() {
-  const url = process.env.SUPABASE_URL!;
-  const secret = process.env.SUPABASE_SECRET_KEY!;
-  return createAdminClient({
-    auth: { keyName: 'default' },
-    env: { url, secretKeys: { default: secret }, publishableKeys: { default: process.env.SUPABASE_PUBLISHABLE_KEY! } },
-  }) as any;
+async function getSb() {
+  const { data: ctx, error } = await createSupabaseContext({ auth: 'secret' });
+  if (!ctx) throw new Error((error as Error)?.message || 'Database connection unavailable');
+  return ctx.supabaseAdmin as any;
 }
 
 export async function fetchRssFeed(feedId: string) {
-  const sb = getSb();
+  const sb = await getSb();
   const { data: feed } = await sb.from('rss_feeds').select('*').eq('id', feedId).single();
   if (!feed || feed.status !== 'active') return { imported: 0 };
 
@@ -70,14 +67,14 @@ export async function fetchRssFeed(feedId: string) {
 }
 
 export async function refreshAllFeeds() {
-  const sb = getSb();
+  const sb = await getSb();
   const { data: feeds } = await sb.from('rss_feeds').select('id').eq('status', 'active');
   const results = await Promise.allSettled((feeds || []).map((f: any) => fetchRssFeed(f.id)));
   return results;
 }
 
 export async function getRecentRssItems(limit = 10) {
-  const sb = getSb();
+  const sb = await getSb();
   const { data: items } = await sb.from('rss_items')
     .select('*, feed:rss_feeds!feed_id(name, category:categories(name, slug))')
     .order('imported_at', { ascending: false })

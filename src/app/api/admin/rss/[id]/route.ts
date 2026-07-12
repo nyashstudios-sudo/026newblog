@@ -64,8 +64,13 @@ export const POST = requireRole('admin', async (req) => {
   if (!feed) return NextResponse.json({ error: 'Feed not found' }, { status: 404 });
 
   if (action === 'fetch') {
-    const result = await fetchRssFeed(id);
-    return NextResponse.json({ result });
+    try {
+      const result = await fetchRssFeed(id);
+      return NextResponse.json({ result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch feed';
+      return NextResponse.json({ result: { imported: 0, error: message } });
+    }
   }
 
   if (action === 'import') {

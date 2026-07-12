@@ -11,6 +11,11 @@ export const POST = requireRole('admin', async (req) => {
   const id = url.pathname.split('/').pop() || '';
   if (!id) return NextResponse.json({ error: 'Feed ID required' }, { status: 400 });
 
-  const result = await fetchRssFeed(id);
-  return NextResponse.json({ imported: result.imported, error: result.error });
+  try {
+    const result = await fetchRssFeed(id);
+    return NextResponse.json({ imported: result.imported, error: result.error });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch feed';
+    return NextResponse.json({ imported: 0, error: message }, { status: 200 });
+  }
 });

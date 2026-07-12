@@ -2,9 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Space_Grotesk, Newsreader } from 'next/font/google';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
-import { Navbar } from '@/components/layout/navbar';
-import { Footer } from '@/components/layout/footer';
-import { BreakingNewsTicker } from '@/components/layout/breaking-news-ticker';
+import { SiteHeader } from '@/components/layout/site-header';
+import { SiteFooter } from '@/components/layout/site-footer';
 import { RealtimeFeedProvider } from '@/components/providers/realtime-feed-provider';
 import { JsonLd } from '@/components/seo/json-ld';
 import './globals.css';
@@ -81,10 +80,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <AuthProvider>
             <RealtimeFeedProvider>
               <JsonLd />
-              <BreakingNewsTicker />
-              <Navbar />
+              <SiteHeader />
               <main className="flex-1">{children}</main>
-              <Footer />
+              <SiteFooter />
             </RealtimeFeedProvider>
           </AuthProvider>
         </ThemeProvider>
