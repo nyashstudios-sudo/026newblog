@@ -203,36 +203,36 @@ values
 
 insert into public.payouts (id, author_id, amount_usd, amount_kes, exchange_rate, fee_usd, mpesa_phone, mpesa_transaction_id, status, processed_at, created_at)
 values
- ('p1000000-0000-0000-0000-000000000001', v_ada, 80.00, 10240.00, 128.0, 1.50, '+254712345001', 'MPESA00ABC1', 'completed', now() - interval '20 days', now() - interval '22 days'),
- ('p1000000-0000-0000-0000-000000000002', v_ada, 60.00, 7680.00, 128.0, 1.25, '+254712345001', null, 'pending', null, now() - interval '1 day');
+ ('d1000000-0000-0000-0000-000000000001', v_ada, 80.00, 10240.00, 128.0, 1.50, '+254712345001', 'MPESA00ABC1', 'completed', now() - interval '20 days', now() - interval '22 days'),
+ ('d1000000-0000-0000-0000-000000000002', v_ada, 60.00, 7680.00, 128.0, 1.25, '+254712345001', null, 'pending', null, now() - interval '1 day');
 
 insert into public.moderation_queue (id, type, content_id, reported_by, reason, ai_confidence, ai_category, status, created_at)
 values
- ('h1000000-0000-0000-0000-000000000001', 'comment', 'd1000000-0000-0000-0000-000000000005', '["anon"]', 'Possible spam link', 0.82, 'spam', 'pending', now() - interval '4 hours'),
- ('h1000000-0000-0000-0000-000000000002', 'article', 'a8', '["reader2"]', 'Off-topic report', 0.21, 'off_topic', 'pending', now() - interval '1 day');
+ ('d2000000-0000-0000-0000-000000000001', 'comment', 'd1000000-0000-0000-0000-000000000005', '["anon"]', 'Possible spam link', 0.82, 'spam', 'pending', now() - interval '4 hours'),
+ ('d2000000-0000-0000-0000-000000000002', 'article', 'a8', '["reader2"]', 'Off-topic report', 0.21, 'off_topic', 'pending', now() - interval '1 day');
 
 insert into public.rss_feeds (id, name, url, category_id, refresh_interval_minutes, status, last_fetched_at, items_today, total_items_imported, created_at)
 values
- ('i1000000-0000-0000-0000-000000000001', 'TechCrunch', 'https://techcrunch.com/feed/', c_tech, 60, 'active', now() - interval '30 minutes', 4, 312, now() - interval '60 days'),
- ('i1000000-0000-0000-0000-000000000002', 'Nature News', 'https://www.nature.com/nature/rss/news', c_sci, 120, 'active', now() - interval '90 minutes', 2, 140, now() - interval '55 days');
+ ('d3000000-0000-0000-0000-000000000001', 'TechCrunch', 'https://techcrunch.com/feed/', c_tech, 60, 'active', now() - interval '30 minutes', 4, 312, now() - interval '60 days'),
+ ('d3000000-0000-0000-0000-000000000002', 'Nature News', 'https://www.nature.com/nature/rss/news', c_sci, 120, 'active', now() - interval '90 minutes', 2, 140, now() - interval '55 days');
 
 insert into public.rss_items (id, feed_id, guid, title, url, author, published_at, imported_at)
 values
- ('j1000000-0000-0000-0000-000000000001', 'i1000000-0000-0000-0000-000000000001', 'tc-1', 'Startups race to ship on-device models', 'https://techcrunch.com/2026/07/01/on-device', 'TechCrunch', now() - interval '3 hours', now() - interval '2 hours'),
- ('j1000000-0000-0000-0000-000000000002', 'i1000000-0000-0000-0000-000000000001', 'tc-2', 'The new economics of inference', 'https://techcrunch.com/2026/07/02/inference', 'TechCrunch', now() - interval '5 hours', now() - interval '4 hours'),
- ('j1000000-0000-0000-0000-000000000003', 'i1000000-0000-0000-0000-000000000002', 'nat-1', 'A fresh look at protein folding', 'https://nature.com/2026/07/01/folding', 'Nature', now() - interval '6 hours', now() - interval '5 hours');
+ ('d4000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000001', 'tc-1', 'Startups race to ship on-device models', 'https://techcrunch.com/2026/07/01/on-device', 'TechCrunch', now() - interval '3 hours', now() - interval '2 hours'),
+ ('d4000000-0000-0000-0000-000000000002', 'd3000000-0000-0000-0000-000000000001', 'tc-2', 'The new economics of inference', 'https://techcrunch.com/2026/07/02/inference', 'TechCrunch', now() - interval '5 hours', now() - interval '4 hours'),
+ ('d4000000-0000-0000-0000-000000000003', 'd3000000-0000-0000-0000-000000000002', 'nat-1', 'A fresh look at protein folding', 'https://nature.com/2026/07/01/folding', 'Nature', now() - interval '6 hours', now() - interval '5 hours');
 
 insert into public.article_audio (id, article_id, audio_url, duration_seconds, voice_model)
 values
- ('k1000000-0000-0000-0000-000000000001', a1, 'https://cdn.026news.com/audio/a1.mp3', 342, 'en-US-Neural2-D'),
- ('k1000000-0000-0000-0000-000000000002', a3, 'https://cdn.026news.com/audio/a3.mp3', 401, 'en-US-Neural2-D'),
- ('k1000000-0000-0000-0000-000000000003', a11, 'https://cdn.026news.com/audio/a11.mp3', 388, 'en-US-Neural2-F');
+ ('d5000000-0000-0000-0000-000000000001', a1, 'https://cdn.026news.com/audio/a1.mp3', 342, 'en-US-Neural2-D'),
+ ('d5000000-0000-0000-0000-000000000002', a3, 'https://cdn.026news.com/audio/a3.mp3', 401, 'en-US-Neural2-D'),
+ ('d5000000-0000-0000-0000-000000000003', a11, 'https://cdn.026news.com/audio/a11.mp3', 388, 'en-US-Neural2-F');
 
 insert into public.security_events (id, user_id, event_type, ip_address, metadata, created_at)
 values
- ('l1000000-0000-0000-0000-000000000001', v_admin, 'login_success', '196.12.4.10', '{"method":"password"}'::jsonb, now() - interval '1 day'),
- ('l1000000-0000-0000-0000-000000000002', v_mia, 'failed_login', '197.232.11.4', '{"attempts":3}'::jsonb, now() - interval '2 days'),
- ('l1000000-0000-0000-0000-000000000003', null, 'rate_limit_triggered', '41.90.5.22', '{"route":"/api/articles/feed"}'::jsonb, now() - interval '5 hours');
+ ('d6000000-0000-0000-0000-000000000001', v_admin, 'login_success', '196.12.4.10', '{"method":"password"}'::jsonb, now() - interval '1 day'),
+ ('d6000000-0000-0000-0000-000000000002', v_mia, 'failed_login', '197.232.11.4', '{"attempts":3}'::jsonb, now() - interval '2 days'),
+ ('d6000000-0000-0000-0000-000000000003', null, 'rate_limit_triggered', '41.90.5.22', '{"route":"/api/articles/feed"}'::jsonb, now() - interval '5 hours');
 
 insert into public.platform_settings (key, value, updated_by, updated_at)
 values
